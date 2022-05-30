@@ -1,0 +1,737 @@
+{% extends "base.html" %} {% block title %}Login{% endblock title%}
+
+<head>
+  {% block head %} {{super()}}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+  <script src="{{ url_for('static', filename='js/dae/clientID.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dae/gateway-loader.js') }}"></script>
+  <link href="{{ url_for('static', filename='css/dae/add-ons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/dae/interface.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dae/amchart.css') }}" rel="stylesheet">
+  <script>
+    function number_check(value) {
+      if ($(value).val().length > parseInt($(value).attr("maxlength"))) {
+        var str = $(value).val();
+        $(value).val(str.substring(0, str.length - 1));
+      } else if (parseInt($(value).val()) > parseInt($(value).attr("max")) || parseInt($(value).val()) < parseInt($(
+          value).attr("min"))) {
+        $(value).val("");
+      } else
+        $(value).val($(value).val().replace(/[^\d]/g, ''));
+    }
+  </script>
+  {% endblock head %}
+</head>
+{% block content%}
+
+<body style="font-family:Microsoft JhengHei" onload="startTime('1')">
+  <div class="page home-page">
+    <!-- navbar-->
+    <header class="header">
+      <nav class="navbar">
+        <div class="container-fluid">
+          <div class="navbar-holder d-flex align-items-center justify-content-between">
+            <div class="navbar-header"><a id="toggle-btn" href="#" class="menu-btn"><i class="fa fa-bars fa-2x"
+                  style="vertical-align: middle;"> </i></a>
+              <a href="/" class="navbar-brand">
+                <div class="brand-text hidden-sm-down"><span>電力資訊 </span><strong class="text-primary">用電數據視覺化</strong>
+                </div>
+              </a>
+            </div>
+            <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center">
+              {% if role == "Gateway"%}
+              <li class="nav-item"><a href="/" class="nav-link logout">回到首頁<i class="fa fa-sign-out"></i></a></li>
+              {%else%}
+              <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+              <li class="nav-item"><a href="/" class="nav-link logout">回到首頁<i class="fa fa-sign-out"></i></a></li>
+              {%endif%}
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </header>
+    <section class="dashboard-counts section-padding">
+      <div class="col-lg-12">
+        <h1 class="page-header">電錶資訊</h1>
+      </div>
+      <div id="page-wrapper" calss="text-primary" style="padding: 1%">
+        <div class="card" style="border: 1px solid rgba(0,0,0,.125);">
+          <ol class="breadcrumb">
+            <i class="fa fa-home"></i><a href="{{ url_for('main.select_gateway', send_type='gateway') }}"
+              style="font-family: Microsoft JhengHei">電錶資訊 &nbsp</a>
+            <i class="fa fa-exchange" style="{{fa_color}}"></i><a style="font-family: Microsoft JhengHei">{{reading_status}}</a>
+            <li class="pull-right"><a href="#" class="btn_setting_gateway " Pstyle="font-family: Microsoft JhengHei"><i
+                  class="fa fa-cog"></i>一般反應設定</a></li>
+            <li class="pull-right"><a href="#" class="btn_setting_meters " style="font-family: Microsoft JhengHei"><i
+                  class="fa fa-tachometer"></i>開機設定/</a></li>
+            <li class="pull-right"><a href="#" class="btn_setting_control " style="font-family: Microsoft JhengHei"><i
+                  class="fa fa-circle-o-notch"></i>卸載設定/</a></li>
+            {% if role == "Gateway"%}
+            <li class="pull-right"><a href="#" class="btn_setting_elerecord " style="font-family: Microsoft JhengHei"><i
+                  class="fa fa-circle-o-notch"></i>用電紀錄/</a></li>
+            {% else %} {% endif %}
+          </ol>
+          <div class="card-block">
+            <div class="row list_meters">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- Statistics Section-->
+    <footer class="main-footer">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-6">
+            <p>Your company &copy; 2018</p>
+          </div>
+          <div class="col-sm-6 text-right">
+            <p>Design by <a href="https://bootstrapious.com" class="external">KDD</a></p>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!--******************************************************************************************************************-->
+    <!--更新開機設定end-->
+    <div class="dialog dialog_meterList">
+      <div class="page_meterList">
+        <div class="row">
+          <div class="col-lg-12">
+            <h1 class="page-header">開機設定</h1>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-lg-12 margin-tb">
+            <div class="pull-left">
+              <h2>目前使用的開機設定</h2>
+            </div>
+            <div class="pull-right">
+              <a class="btn btn-success open_setting" href="#" class="btn_toNewMeter">新增開機設定</a>
+            </div>
+          </div>
+
+          <table class="table table-bordered table_meter">
+            <thead class="tablerow_meter">
+              <tr>
+                <th width="70">機型</th>
+                <th>位址</th>
+                <th>頻道</th>
+                <th>傳送速率</th>
+                <th>迴路</th>
+                <th>PT值</th>
+                <th>CT值</th>
+                <th>電錶類型</th>
+                <th>動作</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+      </div>
+
+      <!--新增開機設定-->
+      <div class="page_newMeter">
+        <i class="fa fa-reply btn_toMeterList" aria-hidden="true"></i>
+        <div class="row">
+          <div class="col-lg-12">
+            <h1 class="page-header">新增開機設定</h1>
+          </div>
+          <!-- /.col-lg-12 -->
+        </div>
+        <div class="container-fulid">
+          <form method="POST" accept-charset="UTF-8">
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>機型:</strong>
+                  <select class="meter_new_model form-control" name="model">
+                    <option value="PM100">PM100</option>
+                    <option value="PM200-A">PM200-A</option>
+                    <option value="PM200-B">PM200-B</option>
+                    <option value="PM200-C">PM200-C</option>
+                    <option value="PM200-STD">PM200-STD</option>
+                    <option value="PM210-4-A">PM210-4-A</option>
+                    <option value="PM210-4-B">PM210-4-B</option>
+                    <option value="PM210-4-C">PM210-4-C</option>
+                    <option value="PM210-4-STD" selected="selected">PM210-4-STD</option>
+                    <option value="PM210-A">PM210-A</option>
+                    <option value="PM210-B">PM210-B</option>
+                    <option value="PM210-C">PM210-C</option>
+                    <option value="PM210-P-A">PM210-P-A</option>
+                    <option value="PM210-P-B">PM210-P-B</option>
+                    <option value="PM210-P-C">PM210-P-C</option>
+                    <option value="PM210-P-STD">PM210-P-STD</option>
+                    <option value="PM210-STD">PM210-STD</option>
+                    <option value="PM210-X-A">PM210-X-A</option>
+                    <option value="PM210-X-B">PM210-X-B</option>
+                    <option value="PM210-X-C">PM210-X-C</option>
+                    <option value="PM210-X-STD">PM210-X-STD</option>
+                    <option value="PM250-4-A">PM250-4-A</option>
+                    <option value="PM250-4-B">PM250-4-B</option>
+                    <option value="PM250-4-C">PM250-4-C</option>
+                    <option value="PM250-4-STD">PM250-4-STD</option>
+                    <option value="PM250-4-專案">PM250-4-專案</option>
+                    <option value="PM250-S-A">PM250-S-A</option>
+                    <option value="PM250-S-B">PM250-S-B</option>
+                    <option value="PM250-S-C">PM250-S-C</option>
+                    <option value="PM250-S-STD">PM250-S-STD</option>
+                    <option value="PM250-S-專案">PM250-S-專案</option>
+                    <option value="PM250-X-A">PM250-X-A</option>
+                    <option value="PM250-X-B">PM250-X-B</option>
+                    <option value="PM250-X-C">PM250-X-C</option>
+                    <option value="PM250-X-STD">PM250-X-STD</option>
+                    <option value="PM250-X-專案">PM250-X-專案</option>
+                    <option value="保留">保留</option>
+                    <option value="Polaris-120-A">Polaris-120-A</option>
+                    <option value="Polaris-120-B">Polaris-120-B</option>
+                    <option value="Polaris-120-C">Polaris-120-C</option>
+                    <option value="Polaris-240-A">Polaris-240-A</option>
+                    <option value="Polaris-240-B">Polaris-240-B</option>
+                    <option value="Polaris-240-C">Polaris-240-C</option>
+                    <option value="Polaris-P103">Polaris-P103</option>
+                    <option value="Polaris-P153">Polaris-P153</option>
+                    <option value="Polaris-P202">Polaris-P202</option>
+                    <option value="Polaris-P204">Polaris-P204</option>
+                    <option value="Polaris-P205">Polaris-P205</option>
+                    <option value="Polaris-P206">Polaris-P206</option>
+                    <option value="Polaris-P252">Polaris-P252</option>
+                    <option value="Polaris-P254">Polaris-P254</option>
+                    <option value="Polaris-P255">Polaris-P255</option>
+                    <option value="Polaris-P256">Polaris-P256</option>
+                    <option value="Polaris-P302">Polaris-P302</option>
+                    <option value="Polaris-P304">Polaris-P304</option>
+                    <option value="Polaris-P305">Polaris-P305</option>
+                    <option value="Polaris-P306">Polaris-P306</option>
+                    <option value="SMB350-4-A">SMB350-4-A</option>
+                    <option value="SMB350-4-B">SMB350-4-B</option>
+                    <option value="SMB350-4-C">SMB350-4-C</option>
+                    <option value="SMB350-8-A">SMB350-8-A</option>
+                    <option value="SMB350-8-B">SMB350-8-B</option>
+                    <option value="SMB350-8-C">SMB350-8-C</option>
+                    <option value="SMB350-8-S">SMB350-8-S</option>
+                    <option value="SMB350-8-專案型">SMB350-8-專案型</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>位址:</strong>
+                  <input placeholder="1~255" min="1" max="255" maxlength="3" onkeyup="number_check(this)"
+                    class="meter_address form-control" name="address" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>頻道:</strong>
+                  <input placeholder="1~15" min="1" max="15" maxlength="2" onkeyup="number_check(this)"
+                    class="meter_channel form-control" name="ch" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>傳送速率:</strong>
+                  <select class="form-control meter_speed" name="speed">
+                    <option value="1200">1200</option>
+                    <option value="2400">2400</option>
+                    <option value="4800">4800</option>
+                    <option value="9600" selected="selected">9600</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>迴路:</strong>
+                  <input placeholder="1~72" min="1" max="72" maxlength="2" onkeyup="number_check(this)"
+                    class="meter_circuit form-control" name="circuit" type="text" value="1">
+                  <em>(不能重複)</em>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>PT值:</strong>
+                  <input placeholder="1~10000" min="1" max="10000" maxlength="5" onkeyup="number_check(this)"
+                    class="meter_pt form-control" name="pt" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>CT值:</strong>
+                  <input placeholder="1~10000" min="1" max="10000" maxlength="5" onkeyup="number_check(this)"
+                    class="meter_ct form-control" name="ct" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>電錶類型:</strong>
+                  <select class="meter_type form-control" name="type">
+                    <option value="main_meter">總錶</option>
+                    <option value="sub_meter">分錶</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-12 col-sm-12 col-md-4 text-left">
+                <div class="btn btn-primary btn_insertMeter">提交</div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <!--新增開機設定end-->
+      <!--更新開機設定end-->
+      <div class="col-sm-12 page_meterSetting" style="display:none;">
+        <i class="fa fa-reply fa-2x btn_to_page_meterList" aria-hidden="true"></i>
+        <div class="row">
+          <div class="col-lg-12">
+            <h1 class="page-header">更新開機設定</h1>
+          </div>
+          <!-- /.col-lg-12 -->
+        </div>
+        <div class="dialog container-fluid">
+          <form method="POST" accept-charset="UTF-8">
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>機型:</strong>
+                  <select class="form-control meter_update_model" name="model">
+                    <option value="PM100">PM100</option>
+                    <option value="PM200-A">PM200-A</option>
+                    <option value="PM200-B">PM200-B</option>
+                    <option value="PM200-C">PM200-C</option>
+                    <option value="PM200-STD">PM200-STD</option>
+                    <option value="PM210-4-A">PM210-4-A</option>
+                    <option value="PM210-4-B">PM210-4-B</option>
+                    <option value="PM210-4-C">PM210-4-C</option>
+                    <option value="PM210-4-STD" selected="selected">PM210-4-STD</option>
+                    <option value="PM210-A">PM210-A</option>
+                    <option value="PM210-B">PM210-B</option>
+                    <option value="PM210-C">PM210-C</option>
+                    <option value="PM210-P-A">PM210-P-A</option>
+                    <option value="PM210-P-B">PM210-P-B</option>
+                    <option value="PM210-P-C">PM210-P-C</option>
+                    <option value="PM210-P-STD">PM210-P-STD</option>
+                    <option value="PM210-STD">PM210-STD</option>
+                    <option value="PM210-X-A">PM210-X-A</option>
+                    <option value="PM210-X-B">PM210-X-B</option>
+                    <option value="PM210-X-C">PM210-X-C</option>
+                    <option value="PM210-X-STD">PM210-X-STD</option>
+                    <option value="PM250-4-A">PM250-4-A</option>
+                    <option value="PM250-4-B">PM250-4-B</option>
+                    <option value="PM250-4-C">PM250-4-C</option>
+                    <option value="PM250-4-STD">PM250-4-STD</option>
+                    <option value="PM250-4-專案">PM250-4-專案</option>
+                    <option value="PM250-S-A">PM250-S-A</option>
+                    <option value="PM250-S-B">PM250-S-B</option>
+                    <option value="PM250-S-C">PM250-S-C</option>
+                    <option value="PM250-S-STD">PM250-S-STD</option>
+                    <option value="PM250-S-專案">PM250-S-專案</option>
+                    <option value="PM250-X-A">PM250-X-A</option>
+                    <option value="PM250-X-B">PM250-X-B</option>
+                    <option value="PM250-X-C">PM250-X-C</option>
+                    <option value="PM250-X-STD">PM250-X-STD</option>
+                    <option value="PM250-X-專案">PM250-X-專案</option>
+                    <option value="保留">保留</option>
+                    <option value="Polaris-120-A">Polaris-120-A</option>
+                    <option value="Polaris-120-B">Polaris-120-B</option>
+                    <option value="Polaris-120-C">Polaris-120-C</option>
+                    <option value="Polaris-240-A">Polaris-240-A</option>
+                    <option value="Polaris-240-B">Polaris-240-B</option>
+                    <option value="Polaris-240-C">Polaris-240-C</option>
+                    <option value="Polaris-P103">Polaris-P103</option>
+                    <option value="Polaris-P153">Polaris-P153</option>
+                    <option value="Polaris-P202">Polaris-P202</option>
+                    <option value="Polaris-P204">Polaris-P204</option>
+                    <option value="Polaris-P205">Polaris-P205</option>
+                    <option value="Polaris-P206">Polaris-P206</option>
+                    <option value="Polaris-P252">Polaris-P252</option>
+                    <option value="Polaris-P254">Polaris-P254</option>
+                    <option value="Polaris-P255">Polaris-P255</option>
+                    <option value="Polaris-P256">Polaris-P256</option>
+                    <option value="Polaris-P302">Polaris-P302</option>
+                    <option value="Polaris-P304">Polaris-P304</option>
+                    <option value="Polaris-P305">Polaris-P305</option>
+                    <option value="Polaris-P306">Polaris-P306</option>
+                    <option value="SMB350-4-A">SMB350-4-A</option>
+                    <option value="SMB350-4-B">SMB350-4-B</option>
+                    <option value="SMB350-4-C">SMB350-4-C</option>
+                    <option value="SMB350-8-A">SMB350-8-A</option>
+                    <option value="SMB350-8-B">SMB350-8-B</option>
+                    <option value="SMB350-8-C">SMB350-8-C</option>
+                    <option value="SMB350-8-S">SMB350-8-S</option>
+                    <option value="SMB350-8-專案型">SMB350-8-專案型</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>位址:</strong>
+                  <input placeholder="1~255" min="1" max="255" maxlength="3" onkeyup="number_check(this)"
+                    class="meter_update_address form-control" name="address" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>頻道:</strong>
+                  <input placeholder="1~15" min="1" max="15" maxlength="2" onkeyup="number_check(this)"
+                    class="meter_update_channel form-control" name="ch" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>傳送速率:</strong>
+                  <select class="form-control meter_update_speed" name="speed">
+                    <option value="1200">1200</option>
+                    <option value="2400">2400</option>
+                    <option value="4800">4800</option>
+                    <option value="9600" selected="selected">9600</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>迴路:</strong>
+                  <input placeholder="1~72" min="1" max="72" maxlength="2" onkeyup="number_check(this)"
+                    class="meter_update_circuit form-control" name="circuit" type="text" value="1">
+                  <em>(不能重複)</em>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>PT值:</strong>
+                  <input placeholder="1~10000" min="1" max="10000" maxlength="5" onkeyup="number_check(this)"
+                    class="meter_update_pt form-control" name="pt" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>CT值:</strong>
+                  <input placeholder="1~10000" min="1" max="10000" maxlength="5" onkeyup="number_check(this)"
+                    class="meter_update_ct form-control" name="ct" type="text" value="1">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-6 col-sm-6 col-md-4">
+                <div class="form-group">
+                  <strong>電錶類型:</strong>
+                  <select class="meter_update_type form-control" name="type">
+                    <option value="main_meter">總錶</option>
+                    <option value="sub_meter">分錶</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-xs-12 col-sm-12 col-md-4 text-left">
+                <div class="btn btn-primary btn_updateMeter">更新</div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!--更新開機設定end-->
+  </div>
+
+  <!-- 一般設定 -->
+  <div class="dialog dialog_gatewaySetting">
+    <div class="page_gatewaySetting">
+      <div class="row">
+        <div class="col-lg-12">
+          <h1 class="page-header">一般設定</h1>
+          <!--<i class="fa fa-cog fa-2x" id="groupdown" aria-hidden="true" title="設定"></i>-->
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="row">
+            <div class="col-sm-12" style="margin: 10px 10px 0 0">
+              <div class="card" style="border: 1px solid rgba(0,0,0,.125)">
+                <div class="card-header">
+                  <h3 class="panel-title">需量值設定:</h3>
+                </div>
+                <div class="card-block">
+                  <label class="text-muted">最大需量值設定(KW):</label>
+                  <input class="gateway_maxDemand form-control" readonly="true" style="border:0;  font-weight:bold;"
+                    name="value" type="number" value="1000">
+                  <br>
+                  <div class="gateway_bar_maxDemand"></div>
+                  <br>
+                  <label class="text-muted">需量低限(%):</label>
+                  <input class="gateway_minimum form-control" readonly="true" style="border:0;  font-weight:bold;"
+                    name="value_min" type="number" value="0">
+                  <br><label class="text-muted">需量高限(%):</label>
+                  <input class="gateway_maximum form-control" readonly="true" style="border:0;  font-weight:bold;"
+                    name="value_max" type="number" value="0">
+                  <br>
+                  <div class="gateway_bar_range"></div>
+                  <br>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-12" style="margin: 10px 10px 0 0">
+              <div class="card" style="border: 1px solid rgba(0,0,0,.125)">
+                <!--<div class="panel panel-default">-->
+                <div class="card-header">
+                  <h3 class="panel-title">卸載模式設定:
+                  </h3>
+                </div>
+                <div class="card-block">
+                  <div class="form-group">
+                    <label class="text-muted">卸載模式:</label>
+                    <select class="form-control gateway_offload_mode" name="mode">
+                      <option value="先卸一起復歸">先卸一起復歸</option>
+                      <option value="先卸先復歸">先卸先復歸</option>
+                      <option value="先卸後復歸">先卸後復歸</option>
+                      <option value="循環先卸一起復歸">循環先卸一起復歸</option>
+                      <option value="循環先卸先復歸">循環先卸先復歸</option>
+                      <option value="循環先卸後復歸" selected="selected">循環先卸後復歸</option>
+                    </select>
+                  </div>
+                </div>
+                <!--</div>-->
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-12" style="margin: 10px 10px 0 0">
+              <div class="card" style="border: 1px solid rgba(0,0,0,.125)">
+                <!--<div class="panel panel-default">-->
+                <div class="card-header">
+                  <h3 class="panel-title">需量控制時間設定:</h3>
+                </div>
+                <div class="card-block">
+                  <label class="text-muted">卸載間隔時間:</label>
+                  <input class="gateway_offloadOverhead" class="form-control" style="border:0;  font-weight:bold;"
+                    name="load_off_gap" type="number" value="0" min="0">
+                  <label class="text-muted">秒</label>
+                  <br><br>
+                  <label class="text-muted">復歸延遲時間:</label>
+                  <input class="gateway_reloadDelayOverhead" class="form-control" style="border:0;  font-weight:bold;"
+                    name="reload_delay" type="number" value="0" min="0">
+                  <label class="text-muted">秒</label>
+                  <br> <br>
+                  <label class="text-muted">復歸間隔時間:</label>
+                  <input class="gateway_reloadOverhead" class="form-control" style="border:0;  font-weight:bold;"
+                    name="reload_gap" type="number" value="0" min="0">
+                  <label class="text-muted">秒</label>
+                </div>
+              </div>
+              <!--</div>-->
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-12" style="margin: 10px 10px 0 0">
+              <!--<div class="panel panel-default">-->
+              <div class="card" style="border: 1px solid rgba(0,0,0,.125)">
+                <div class="card-header">
+                  <h3 class="panel-title">卸載群種類設定:</h3>
+                </div>
+                <div class="card-block">
+                  <div class="form-group">
+                    <label class="text-muted">卸載群種類:</label>
+                    <select class="form-control gateway_groupCategory" name="group">
+                      <option value="模組常開">模組常開</option>
+                      <option value="模組常關">模組常關</option>
+                      <option value="不設定">不設定</option>
+                      <option value="DEM電表系列" selected="selected">DEM電表系列</option>
+                    </select>
+                  </div>
+                </div>
+                <!--</div>-->
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-12" style="margin: 10px 10px 0 0">
+              <div class="card" style="border: 1px solid rgba(0,0,0,.125)">
+                <div class="card-header">
+                  <h3>
+                    需量計算週期設定:
+                  </h3>
+                </div>
+                <div class="card-block">
+                  <div class="form-group">
+                    <label class="text-muted">週期(分):</label>
+                    <select class="form-control gateway_cycle" name="cycle">
+                      <option value="15">15</option>
+                      <option value="30" selected="selected">30</option>
+                      <option value="60">60</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-12" style="margin: 10px 10px 0 0">
+                  <div class="btn btn-primary btn_updateGateway">更新</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--即時控制 -->
+  <div class="dialog dialog_control">
+    <div class="row">
+      <div class="real-control card col-6 ">
+        <div class="card-title">
+          <div class="col-lg-12">
+            <h1 class="page-header">
+              手動卸載
+              <!--<div class="pull-right">
+                    <a class="btn btn-success open_setting" href="#" class="btn_toNewMeter">新增群組</a>
+                  </div>-->
+            </h1>
+          </div>
+          <!-- /.col-lg-12 -->
+        </div>
+        <div class="row">
+          <div class="col-sm-12" style="width:100%">
+            <div class="panel panel-default" style="border: 1px solid rgba(0,0,0,.125);">
+              <div class="card-block" id="panel-groups-boolean">
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="real-control card col-6 ">
+        <div class="card-title">
+          <div class="col-lg-12">
+            <h1 class="page-header">需量卸載設定</h1>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-12" style="width:100%">
+            <div class="panel panel-default" style="border: 1px solid rgba(0,0,0,.125);">
+              <div class="card-block" id="panel-groups-available">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--用電紀錄-->
+  <div class="dialog dialog_eleRecordList" style="background: white;">
+    <div class="page_elerecordList">
+      <div class="row">
+        <div class="col-lg-12">
+          <h1 class="page-header">用電紀錄</h1>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row">
+          <div class="col-lg-12 margin-tb">
+            <div class="pull-left">
+              <h2>用電紀錄</h2>
+            </div>
+            <div class="pull-right">
+              <a class="btn btn-success open_search " href="#">搜尋</a>
+            </div>
+            <div class="pull-right">
+              <input placeholder="1~72" id="a" name="circuit" SIZE=5 type="text" value="1">
+            </div>
+            <div class="pull-right">
+              <p>迴路:</p>
+            </div>
+            <div class="pull-right">
+              <input id="thedate2" type="text" SIZE=7>
+            </div>
+            <div class="pull-right">
+              <p>到</p>
+            </div>
+            <div class="pull-right">
+              <input id="thedate" type="text" SIZE=7>
+            </div>
+            <div class="pull-right">
+              <p>日期:</p>
+            </div>
+          </div>
+        </div>
+        <table class="table table-bordered table_elerecord" id="elerecordtable">
+          <thead class="tablerow_meter">
+            <tr>
+              <th>Id</th>
+              <th>Value (Watt)</th>
+              <th>Circuit</th>
+              <th>Created At</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+
+    <!--搜尋頁面-->
+    <div class="page_searchEleRecordList">
+      <i class="fa fa-reply btn_toeleRecordList" aria-hidden="true"></i>
+      <div class="row">
+        <div class="col-lg-12">
+          <h1 class="page-header">搜尋結果</h1>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row">
+          <div class="col-lg-12 margin-tb">
+            <div class="pull-left">
+              <h2>用電紀錄</h2>
+            </div>
+          </div>
+        </div>
+        <table class="table table-bordered table_searchelerecord" id="searchelerecordtable">
+          <thead class="tablerow_meter">
+            <tr>
+              <th>Id</th>
+              <th>Value</th>
+              <th>Circuit</th>
+              <th>Created At</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!--需量即時監控圖-->
+  <div class="dialog_meterChart">
+    <div class="page_meterChart">
+      <div>
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <!-- Javascript files-->
+
+
+  {% endblock content%}

@@ -1,0 +1,340 @@
+{% extends"base.html" %} {% block head %} {{super()}}
+<script type="text/javascript" src="{{ url_for('static', filename='js/hullabaloo/js/hullabaloo.js') }}"></script>
+<link href="{{ url_for('static', filename='css/dae/demand_group_setting.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='js/hullabaloo/css/hullabaloo.min.css') }}" rel="stylesheet">
+
+<script>
+var group_setting_list = '';
+
+$(function () {
+    var group_setting_list_org = $('#group-setting-list').text(),
+    group_setting_list_string = group_setting_list_org.replace(/\'/g, '\"');
+    group_setting_list = $.parseJSON(group_setting_list_string);
+    $('.group-info-edit').click(groupInfoEditModal);
+    $('.group-node-edit').click(groupNodeEditModal);
+    $('#demand-group-setting-submit').click(demandGroupSettingSubmit);
+    $('.demand-group-sort').change(changeDemandGroupSort);
+
+    $(".unload-droppable").sortable({
+        connectWith: ".unload-droppable, .load-droppable"
+    });
+    $(".load-droppable").sortable({
+        connectWith: ".unload-droppable, .load-droppable"
+    });
+    $('.unload-droppable, .load-droppable').bind('sortreceive', function(event, ui) {
+            group_node_change(event, ui);
+     });
+});
+
+function group_node_change(event, ui) {
+    var node_id = $(ui.item[0]).data('node-id'),
+        change_type = $(ui.item[0]).attr('data-change-type'),
+        demand_group_id = $('#node-setting-demand-group-id').val();
+    $.ajax({
+        type: 'POST',
+        url: '/api/v1.0/demand_group_node_change',
+        data: {
+            gateway_id: {{gateway_id}},
+            node_id: node_id,
+            change_type: change_type,
+            demand_group_id: demand_group_id
+        },
+        dataType: 'json'
+    }).then(function(result){
+        var hulla = new hullabaloo({align: "center"}), changed_type;
+        if (!result['result']) {
+            hulla.send("更新失敗!", "success");
+            return false;
+         }
+        changed_type = change_type == 'unselected' ? 'selected' : 'unselected';
+        $(ui.item[0]).removeClass(change_type + '-draggable');
+        $(ui.item[0]).addClass(changed_type + '-draggable');
+        $(ui.item[0]).attr('data-change-type', changed_type);
+        hulla.send("更新成功!", "success");
+
+    });
+}
+
+function demandGroupSettingSubmit() {
+    var form_data = $('#demand-group-info-form').serializeArray();
+    console.info(form_data);
+    $.ajax({
+        type: 'POST',
+        url: '/api/v1.0/demand_group_info_setting',
+        data: form_data,
+        dataType: 'json'
+    }).then(function(result) {
+         if (!result['result']) {
+            alert('更新失敗!');
+            return false;
+         }
+         alert('更新成功!');
+         location.reload();
+    });
+}
+
+function changeDemandGroupSort() {
+    var demand_group_id = $(this).data('group-id'),
+        demand_group_sort = $(this).val();
+    $.ajax({
+        type: 'POST',
+        url: '/api/v1.0/change_demand_group_sort',
+        data: {
+            gateway_id: {{gateway_id}},
+            demand_group_id: demand_group_id,
+            demand_group_sort: demand_group_sort
+        },
+        dataType: 'json'
+    }).then(function(result) {
+        var hulla = new hullabaloo({align: "center"});
+        if (!result['result']) {
+                hulla.send("更新失敗!", "success");
+                return false;
+         }
+        hulla.send("更新成功!", "success");
+    });
+}
+
+function groupNodeEditModal(){
+    var group_id = $(this).data('group-id') * 1,
+        group_num = group_setting_list[group_id]['num'] * 1,
+        group_name = group_setting_list[group_id]['name'];
+    $.ajax({
+        type: 'POST',
+        url: '/api/v1.0/get_demand_group_node',
+        data: {
+            group_id: group_id,
+            gateway_id: {{gateway_id}}
+        },
+        dataType: 'json'
+    }).then(function(result) {
+        if (!result['result']) {
+            return false;
+        }
+        $('#selected-node-div').html('');
+        $('#unselected-node-div').html('');
+        $.each(result['data'], function(key, value) {
+            var select_div_name = value['node_group_state'] ? 'selected' : 'unselected';
+            var node_item_template_value = [{
+                    node_id: value['node_id'],
+                    node_name: value['name'],
+                    select_div_name: select_div_name
+                }];
+
+            $('#node_item_template').tmpl(node_item_template_value).appendTo('#' + select_div_name + '-node-div');
+        });
+        $('#node-setting-group-number').val(group_num);
+        $('#node-setting-group-name').val(group_name);
+        $('#node-setting-demand-group-id').val(group_id);
+        $('#group-node-setting-modal').modal('show');
+    });
+}
+
+function groupInfoEditModal() {
+    var group_id = $(this).data('group-id') * 1,
+        group_num = group_setting_list[group_id]['num'] * 1,
+        group_sort = group_setting_list[group_id]['sort'] * 1,
+        group_name = group_setting_list[group_id]['name'];
+    $('#modal-group-number').val(group_num);
+    $('#modal-group-name').val(group_name);
+    $('#modal-group-sort option[value="' + group_sort * 1 + '"]').prop('selected', true);
+    $('#group-info-setting-modal').modal('show');
+     $('#demand-group-id').val(group_id);
+}
+
+</script>
+
+{% endblock head%} {% block content%}
+
+<div class="page home-page">
+    <!-- navbar-->
+    <header class="header">
+        <nav class="navbar py-1">
+            <div class="container-fluid px-1">
+                <div class="navbar-holder d-flex align-items-center justify-content-between">
+                    <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#"
+                                                                            class="navbar-toggler btn-link        n"><i
+                            class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+                        <a href="/" class="navbar-brand">
+                            <div class="brand-text hidden-sm-down"><span>需量設定</span></div>
+                        </a>
+                    </div>
+                    <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+                        {% if role == 'Cloud' %}
+                        <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+                        {%endif%}
+                        <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a>
+                        </li>
+                        <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i
+                                class="fas fa-sign-out-alt"></i></a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <!-- Counts Section -->
+    <section class="p-4 h-100">
+        <div class="d-none" id="group-setting-list">{{demand_group_setting_list}}</div>
+        <div class="card card-custom card-stretch gutter-b border-0">
+            <!--begin::Header-->
+            <div class="card-header border-0">
+                <h3 class="card-title align-items-start flex-column">
+                    <span class="card-label font-weight-bolder text-dark">需量群組設定</span>
+                </h3>
+            </div>
+            <div class="card-body pt-2 pb-0 mt-n3 px-3">
+                <div>
+                    <table class="table table-borderless table-vertical-center">
+                        <thead class="border-0">
+                        <tr>
+                            <th class="text-center border-0">群組編號</th>
+                            <th class="text-center border-0">卸載順序</th>
+                            <th class="text-center border-0">群組名稱</th>
+                            <th class="text-center border-0">群組負載設定</th>
+                            <th class="text-center border-0">動作</th>
+                            <th class="text-center border-0">更新時間</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for group_id, group_info in demand_group_setting_list.items() %}
+                        <tr>
+                            <td class="text-center">{{group_info['num']}}</td>
+                            <td class="text-center">
+                                <div class="form-group">
+                                    <select class="form-control text-center demand-group-sort" data-group-id="{{group_id}}">
+                                        {% for i in range(1, demand_group_setting_list|length + 1) %}
+                                        {% set selected = '' %}
+                                        {% if i == group_info['sort']|int %}
+                                        {% set selected = 'selected = ""' %}
+                                        {% endif %}
+                                        <option value="{{i}}" {{selected}}>{{i}}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </td>
+                            <td class="text-center">{{group_info['name']}}</td>
+                            <td class="text-center">
+                                <button class="btn btn-success group-node-edit"
+                                        data-group-id="{{group_info['unload_group_id']}}">點位編輯
+                                </button>
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-primary mr-2 group-info-edit"
+                                        data-group-id="{{group_info['unload_group_id']}}">編輯
+                                </button>
+                                <button class="btn btn-danger">刪除</button>
+                            </td>
+                            <td class="text-center">{{group_info['updated_at']}}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!--end::Body-->
+        </div>
+
+    </section>
+    <div class="modal" tabindex="-1" id="group-node-setting-modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">點位編輯</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="col form-inline px-0">
+                        <div class="px-0 col-6 form-group from-inline">
+                            <label for="node-setting-group-number" class="col col-sm-4 col-form-label">群組編號:</label>
+                            <div class="col col-sm-8">
+                                <input type="text" readonly class="form-control-plaintext"
+                                       id="node-setting-group-number" value="">
+                            </div>
+                        </div>
+                        <div class="px-0 col-6 form-group from-inline">
+                            <label for="node-setting-group-name" class="col col-sm-4 col-form-label">群組名稱:</label>
+                            <div class="col col-sm-8">
+                                <input type="text" readonly class="form-control-plaintext" id="node-setting-group-name"
+                                       value="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="py-2">
+                        <div class="card">
+                            <div class="card-header">
+                                已選擇負載
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="col-12 px-0 form-inline unload-droppable" id="selected-node-div">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="py-2">
+                        <div class="card">
+                            <div class="card-header">
+                                可選擇負載
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="col-12 px-0 form-inline load-droppable" id="unselected-node-div">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="node-setting-demand-group-id" name="demand-group-id" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal" tabindex="-1" id="group-info-setting-modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">編輯群組</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="demand-group-info-form">
+                        <div class="form-group">
+                            <label for="modal-group-number">群組編號</label>
+                            <input type="number" name="demand-group-number" class="form-control" id="modal-group-number" min="1" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="modal-group-sort">卸載順序</label>
+                            <select id="modal-group-sort" name="demand-group-sort" class="form-control">
+                                {% for i in range(1, demand_group_setting_list|length + 1) %}
+                                <option value="{{i}}">{{i}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="modal-group-name">群組名稱</label>
+                            <input type="text" class="form-control" name="demand-group-name" id="modal-group-name" required>
+                        </div>
+                        <input type="hidden" name="gateway_id" value="{{gateway_id}}">
+                        <input type="hidden" id="demand-group-id" name="demand-group-id" value="">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                    <button type="button" class="btn btn-primary" id="demand-group-setting-submit">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script id="node_item_template" type="text/text/x-jquery-tmpl">
+        <div class="col-3 px-0 m-2 ${select_div_name}-draggable"  data-node-id="${node_id}" data-change-type="${select_div_name}" >
+           <div class="col-12 btn btn-outline-primary align-middle" data-node-id="${node_id}" id="group-node-${node_id}"> ${node_name} </div>
+        </div>
+
+    </script>
+    {% endblock content%}

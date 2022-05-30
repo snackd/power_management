@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    {% block head %}
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Gateway Interface</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="all,follow">
+    <link rel="shortcut icon" href="/static/img/dae.png">
+
+    <!-- Bootstrap CSS-->
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+
+    <!-- Google fonts - Roboto -->
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700">
+
+    <!-- theme stylesheet-->
+    <link href="{{ url_for('static', filename='css/style.default.css') }}" id="theme-stylesheet" rel="stylesheet">
+
+    <!-- jQuery Circle-->
+    <link href="{{ url_for('static', filename='css/grasp_mobile_progress_circle-1.0.0.min.css') }}" rel="stylesheet">
+
+    <!-- img icon -->
+    <link href="{{ url_for('static', filename='css/fontawesome/5.13.0/css/all.min.css') }}" rel="stylesheet">
+
+    <!-- jquery ui -->
+    <link href="{{ url_for('static', filename='js/jquery-ui-1.12.1/jquery-ui.min.css') }}" rel="stylesheet">
+
+    <!-- <link href="{{ url_for('static', filename='css/dae/jquery-ui.css') }}" rel="stylesheet"> -->
+    <!-- <link href="{{ url_for('static', filename='css/dae/bootstrap-toggle.min.css') }}" rel="stylesheet"> -->
+    <!-- <link href="{{ url_for('static', filename='css/dae/spinner.css') }}" rel="stylesheet"> -->
+
+
+    <link href="/static/css/dae/navbar.css" rel="stylesheet">
+    <link href="/static/css/dae/base.css" rel="stylesheet">
+
+    <!-- Sweet Alert 2 -->
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.css"> -->
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.css"> -->
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.js"></script> -->
+
+    <!-- Javascript files-->
+
+    <!--amchart-->
+    <!-- <script src="{{ url_for('static', filename='js/amchart/amcharts.js') }}"></script> -->
+    <!-- <script src="{{ url_for('static', filename='js/amchart/serial.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/amchart/light.js') }}"></script> -->
+
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/graph/diagram.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script> -->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui-1.12.1/jquery-ui.min.js') }}"></script>
+
+    <!-- 需在 Bootstrap 前 -->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/tether.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.cookie.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/grasp_mobile_progress_circle-1.0.0.min.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.nicescroll.min.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.validate.min.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/front.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='plugins/jquery-ui/js/jquery-ui-1.10.4.min.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/dae/jquery-ui-timepicker-addon.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/dae/datetimepicker.js') }}"></script> -->
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/dae/datepicker-zh-TW.js') }}"></script> -->
+    <script type="text/javascript" src="{{ url_for('static', filename='css/fontawesome/5.13.0/js/all.min.js') }}"></script>
+    <!-- <script type="text/javascript" src="{{ url_for('static', filename='js/dae/role.js') }}"></script> -->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/dae/jquery.tmpl-1.0.4.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/dae/base.js') }}"></script>
+    {% endblock head %}
+  </head>
+
+<body class="h-100">
+    <!-- Side Navbar -->
+    <div id="topper-div" class="">
+    <nav class="side-navbar" id="side-bar">
+      <div class="side-navbar-wrapper">
+        <div class="sidenav-header d-flex align-items-center justify-content-center px-3 mb-0">
+          <div class="sidenav-header-inner form-inline">
+            <img src="{{ url_for('static', filename='img/dae.png') }}" alt="person" class="img-fluid rounded-circle">
+            <div class="px-3">
+              <span id="hello">您好, </span>
+              <label class="text-uppercase user-name" id="{{session['user-id']}}">{{session['account']}}</label>
+            </div>
+          </div>
+          <div class="sidenav-header-logo">
+            <a href="index.html" class="brand-small text-center"> <strong>K</strong><strong class="text-primary">DD</strong></a>
+          </div>
+        </div>
+        {% set path_route = request.path.split('/') %}
+        {% include 'menu_' + session['role'] + '.html' %}
+      </div>
+    </nav>
+    {% block content %} {% endblock content %}
+    </div>
+    <script>
+        (function (b, o, i, l, e, r) {
+            b.GoogleAnalyticsObject = l;
+            b[l] || (b[l] =
+                function () {
+                    (b[l].q = b[l].q || []).push(arguments)
+                });
+            b[l].l = +new Date;
+            e = o.createElement(i);
+            r = o.getElementsByTagName(i)[0];
+            e.src = '//www.google-analytics.com/analytics.js';
+            r.parentNode.insertBefore(e, r)
+        }(window, document, 'script', 'ga'));
+        ga('create', 'UA-XXXXX-X');
+        ga('send', 'pageview');
+        $(function () {
+            $('#side-main-menu .{{path_route[1]}}').addClass('page-selected');
+        });
+
+
+    </script>
+</body>
+
+</html>

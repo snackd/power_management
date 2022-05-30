@@ -1,0 +1,112 @@
+{% extends"base.html" %} {% block head %} {{super()}}
+<script type="text/javascript" src="{{ url_for('static', filename='js/hullabaloo/js/hullabaloo.js') }}"></script>
+<link href="{{ url_for('static', filename='css/dae/demand_setting.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='js/hullabaloo/css/hullabaloo.min.css') }}" rel="stylesheet">
+
+<script>
+
+    $(function () {
+        $('#demand-setting-submit').click(demandSettingSubmit);
+    });
+
+    function demandSettingSubmit() {
+        var form_data = $('#demand-setting-form').serializeArray(),
+        hulla = new hullabaloo({align: "center"});
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/demand_setting_update',
+            data: form_data,
+            dataType: 'json'
+        }).then(function(result) {
+             if (!result['result']) {
+                hulla.send("更新失敗!", "success");
+                return false;
+             }
+            hulla.send("更新成功!", "success");
+        });
+    }
+
+</script>
+
+{% endblock head%} {% block content%}
+
+<div class="page home-page">
+    <!-- navbar-->
+    <header class="header">
+        <nav class="navbar py-1">
+            <div class="container-fluid px-1">
+                <div class="navbar-holder d-flex align-items-center justify-content-between">
+                    <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#"
+                                                                            class="navbar-toggler btn-link        n"><i
+                            class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+                        <a href="/" class="navbar-brand">
+                            <div class="brand-text hidden-sm-down"><span>需量設定</span></div>
+                        </a>
+                    </div>
+                    <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+                        {% if role == 'Cloud' %}
+                        <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+                        {%endif%}
+                        <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a>
+                        </li>
+                        <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i
+                                class="fas fa-sign-out-alt"></i></a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <!-- Counts Section -->
+    <section class="p-4 h-100">
+        <div class="d-none" id="node-list">{{node_list}}</div>
+        <div class="d-none" id="device-type-list">{{device_type}}</div>
+        <div class="card border-0 shadow-none mb-3 gateway-card-div">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-3">需量設定</h4>
+
+                <form class="forms-sample" id="demand-setting-form">
+                    <div class="form-group">
+                        <label for="demand-contract-capacity">需量契約容量</label>
+                        <div class="input-group mb-3">
+                            <input type="number" class="form-control" name="max-value" value="{{demand_setting_list[0][0]}}" id="demand-contract-capacity" placeholder="需量契約容量">
+                            <span class="input-group-text">kW</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="alarm-upper">警報上限</label>
+                        <div class="input-group mb-3">
+                            <input type="number" class="form-control" name="upper" value="{{demand_setting_list[0][1]}}" id="alarm-upper" placeholder="警報上限">
+                            <span class="input-group-text">kW</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="alarm-lower">復歸下限</label>
+                        <div class="input-group mb-3">
+                            <input type="number" class="form-control" name="lower" value="{{demand_setting_list[0][2]}}" id="alarm-lower" placeholder="復歸下限">
+                            <span class="input-group-text">kW</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reset-interval">復歸間隔時間</label>
+                        <div class="input-group mb-3">
+                            <input type="number" class="form-control" name="reload-gap" value="{{demand_setting_list[0][5]}}" id="reset-interval" placeholder="復歸間隔時間">
+                            <span class="input-group-text">分鐘</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="unload-mode">卸載模式</label>
+                        <select class="form-control" id="unload-mode" name="unload-mode">
+                            <option value="1">先卸載先復歸</option>
+                            <option value="2">先卸載後復歸</option>
+                            <option value="3">循環先卸載先復歸</option>
+                            <option value="4">循環先卸載後復歸</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="gateway-id" value="{{gateway_id}}">
+                    <button type="button" id="demand-setting-submit" class="btn btn-primary mr-2">確定</button>
+                </form>
+            </div>
+        </div>
+
+    </section>
+    {% endblock content%}

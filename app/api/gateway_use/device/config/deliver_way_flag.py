@@ -1,0 +1,1 @@
+DELIVER_WAY = "NB-IoT" 

@@ -1,0 +1,446 @@
+{% extends"base.html" %} {% block head %} {{super()}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+<link href="{{ url_for('static', filename='css/dae/area.css') }}" rel="stylesheet">
+
+<script>
+    $(function () {
+        $('.top-pagination').click(load_project);
+        $('.area-setting').click(showAreaSetting);
+        $('#save-setting-area').click(saveAreaSetting);
+        {% if session['role'] == 'Gateway'%}
+        $('.area-info').click(showAreaInfo);
+        {% endif %}
+        $('.load-item').click(loadItem);
+        $('#areaInfoModal').on('hidden.bs.modal', function (e) {
+            location.reload(true);
+        });
+        $('.area-delete').click(deleteArea);
+    });
+
+    function deleteArea() {
+        var gateway_id = $('#add-area-button').attr('data-gateway-id'),
+            area_id = $(this).attr('data-area-id'),
+            area_name = $(this).attr('data-area-name');
+        if (confirm('確定要刪除「' + area_name + '」?')) {
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1.0/area_delete',
+                data: {
+                    gateway_id: gateway_id,
+                    area_id: area_id
+                },
+                dataType: 'json'
+            }).then(function(result) {
+                if (!result['result']) {
+                    alert(result['message']);
+                    return false;
+                }
+                alert('刪除成功!');
+                location.reload(true);
+            });
+        }
+    }
+
+    function saveItemsState() {
+        var save_type = $(this).attr('data-save-type'),
+            gateway_id = $('#info-gateway-id').val(),
+            area_id = $('#info-area-id').val(),
+            item_id = $(this).val(),
+            check_state = $(this).is(':checked') ? 1 : 0;
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/change_area_' + save_type,
+            data: {
+                gateway_id: gateway_id,
+                area_id: area_id,
+                item_id: item_id,
+                check_state: check_state
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+        });
+
+    }
+
+    function loadItem() {
+        var load_type = $(this).attr('data-load-type'),
+            area_id = $('#info-area-id').val(),
+            gateway_id = $('#info-gateway-id').val();
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/' + load_type,
+            data: {
+                area_id: area_id,
+                gateway_id: gateway_id
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            load_type_assoc = {
+                'load_area_node': 'node',
+                'load_area_group': 'group',
+                'load_area_scene': 'scene'
+            };
+
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+            $('.item-state').off('change');
+            $('#area-' + load_type_assoc[load_type] + '-items').html('');
+            $.each(result['data'][load_type_assoc[load_type] + '_list'], function(key, value) {
+                selected = load_type !== 'load_area_node' ? (value['area_id'] == area_id  ? 'checked=checked' : '') : ($.inArray( value[load_type_assoc[load_type] + '_id'], result['data']['area_items_list'] ) >= 0 ? 'checked=checked' : '') ;
+                var items_template_value = [{
+                    items_type: load_type_assoc[load_type],
+                    items_id: value[load_type_assoc[load_type] + '_id'],
+                    items_name: value[load_type_assoc[load_type] + '_name'],
+                    selected: selected
+                    }];
+                $('#items_checkbox_template').tmpl(items_template_value).appendTo('#area-' + load_type_assoc[load_type] + '-items');
+            });
+            $('.item-state').change(saveItemsState);
+        });
+    }
+
+    function showAreaInfo() {
+        var area_id = $(this).attr('data-area-id'),
+            gateway_id = $('#add-area-button').attr('data-gateway-id'),
+            gateway_name = $(this).attr('data-area-name');
+        $('#info-area-id').val(area_id);
+        $('#info-gateway-id').val(gateway_id);
+        $('#areaInfoModalLabel').text(gateway_name);
+        $('#areaInfoModal .collapse').collapse('hide');
+        $('#areaInfoModal').modal('show');
+    }
+
+    function saveAreaSetting() {
+        var area_id = $('#area-setting-id').val(),
+            area_name = $('#model-setting-area-name').val(),
+            gateway_id = $('#add-area-button').attr('data-gateway-id'),
+            save_type = $('#area-setting-type').val();
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/' + save_type,
+            data: {
+                area_id: area_id,
+                gateway_id: gateway_id,
+                area_name: area_name
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+            alert('儲存成功!');
+            location.reload(true);
+        });
+    }
+
+    function showAreaSetting() {
+        var type = $(this).attr('data-setting-type');
+        $('#areaSettingModalLabel').text('新增區域');
+        $('#area-setting-type').val('area_add');
+        $('#area-setting-id').val('');
+        $('#area-setting-form')[0].reset();
+        if (type === 'modify') {
+            var area_id = $(this).attr('data-area-id'),
+            area_name = $(this).attr('data-area-name');
+
+            $('#areaSettingModalLabel').text('修改區域');
+            $('#model-setting-area-name').val(area_name);
+            $('#area-setting-id').val(area_id);
+            $('#area-setting-type').val('area_modify');
+        }
+
+
+        $('#areaSettingModal').modal('show');
+    }
+
+    function load_project() {
+        var project_id = $(this).attr('data-project-id'),
+            now_project_id = $('.top-pagination-active').attr('data-project-id');;
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/load_project',
+            data: {
+                project_id: project_id
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            if (!result['result']) {
+                $message = result['message'];
+                return false;
+            }
+            $('#add-area-button').attr('data-project-id', project_id);
+            $('.area-setting').off("click");
+            {% if session['role'] == 'Gateway'%}
+            $('.area-info').off("click");
+            {% endif %}
+            $('.area-delete').off("click");
+            $('#all-area-div').html('');
+            if (Object.keys(result['data']['area_list']).length > 0) {
+                $.each(result['data']['area_list'], function(key, area_info) {
+                    var area_template_value = [{
+                            area_id: area_info['id'],
+                            area_name: area_info['area_name']
+                        }];
+                    $('#area_list_template').tmpl(area_template_value).appendTo('#all-area-div');
+                    $('#area-body-' + area_info['id']).html('');
+                    if (result['data']['node_list'][area_info['id']]) {
+                        $.each(result['data']['node_list'][area_info['id']], function(node_key, node_info) {
+                            var group_template_value = [{
+                                    item_type: 'node',
+                                    item_name: node_info[1],
+                                    item_icon: 'lightbulb'
+                                }];
+                            $('#area_item_template').tmpl(group_template_value).appendTo('#area-body-' + area_info['id']);
+                        });
+                    }
+                    if (result['data']['group_list'][area_info['id']]) {
+                        $.each(result['data']['group_list'][area_info['id']], function(group_key, group_info) {
+                            var group_template_value = [{
+                                    item_type: 'group',
+                                    item_name: group_info[1],
+                                    item_icon: 'object-group'
+                                }];
+                            $('#area_item_template').tmpl(group_template_value).appendTo('#area-body-' + area_info['id']);
+                        });
+                    }
+                    if (result['data']['scene_list'][area_info['id']]) {
+                        $.each(result['data']['scene_list'][area_info['id']], function(scene_key, scene_info) {
+                            var scene_template_value = [{
+                                    item_type: 'scene',
+                                    item_name: scene_info[1],
+                                    item_icon: 'futbol'
+                                }];
+                            $('#area_item_template').tmpl(scene_template_value).appendTo('#area-body-' + area_info['id']);
+                        });
+                    }
+                });
+            }
+
+            $('.top-pagination').off("click");
+            $('#project-' + project_id).removeClass('top-pagination');
+            $('#project-' + project_id).addClass('top-pagination-active');
+            $('#project-' + now_project_id).removeClass('top-pagination-active');
+            $('#project-' + now_project_id).addClass('top-pagination');
+            $('.top-pagination').click(load_project);
+            $('.area-setting').click(showAreaSetting);
+            {% if session['role'] == 'Gateway'%}
+            $('.area-info').click(showAreaInfo);
+            {% endif %}
+            $('.area-delete').click(deleteArea);
+        });
+    }
+</script>
+{% endblock head%} {% block content%}
+
+<div class="page home-page">
+  <!-- navbar-->
+  <header class="header">
+    <nav class="navbar py-1">
+      <div class="container-fluid px-1">
+        <div class="navbar-holder d-flex align-items-center justify-content-between">
+          <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#" class="navbar-toggler btn-link"><i class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+            <a href="/" class="navbar-brand">
+              <div class="brand-text hidden-sm-down"><span>區域設定</span></div>
+            </a>
+          </div>
+          <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+            {% if session['role'] == 'Cloud' %}
+            <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+            {%endif%}
+            <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a></li>
+            <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i class="fas fa-sign-out-alt"></i></a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <!-- Counts Section -->
+  <section class="h-100">
+      <div class="form-inline px-4 pagination-div">
+          {% for gateway_info in gateway_list %}
+              {% set active = ' ' %}
+              {% if loop.index == 1 %}
+                  {% set active = '-active' %}
+              {% endif %}
+              <button class="top-pagination{{active}} h-100 px-4" id="gateway-{{gateway_info.id}}" data-project-id="{{gateway_info.id}}">{{gateway_info.name}}</button>
+          {% endfor %}
+      </div>
+      <div class="px-4 py-3">
+            {% if session['role'] == 'Gateway'%}
+            <button class="btn btn-primary area-setting mb-3" data-gateway-id="{{gateway_id}}" id="add-area-button">新增區域</button>
+            {% endif %}
+            <div id="all-area-div">
+                {% for area_info in area_list %}
+                <div class="card border-0 point shadow-none mb-3">
+                    <div class="card-header border-0 py-2 px-2 font-weight-bold form-inline" >
+                        <div class="area-info pr-1" data-area-id="{{area_info.area_id}}" data-area-name="{{area_info.name}}">{{area_info.name}} <i class="fas fa-angle-right"></i> </div>
+                        {% if session['role'] == 'Gateway'%}
+                        <button class="btn btn-link px-0 ml-2 area-setting" data-area-id="{{area_info.area_id}}"  data-area-name="{{area_info.name}}" data-setting-type="modify">
+                              <i class="far fa-edit"></i>
+                        </button>
+                        <button class="btn btn-link btn-trash px-0 ml-2 area-delete" data-area-id="{{area_info.area_id}}"  data-area-name="{{area_info.name}}">
+                              <i class="far fa-trash-alt"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="card-body px-2 py-3 shadow-sm form-inline" id="area-body-{{area_info.area_id}}">
+                        {% for anl_area_id, node_name in area_node_list[area_info.area_id] %}
+                        <div class="col-md-3 col-sm-6 col-xs-12 pb-2">
+                            <div class="info-box">
+                                <span class="info-box-icon type-card-node"><i class="fas fa-lightbulb"></i></span>
+                                <div class="info-box-content d-flex align-items-center border border-left-0">
+                                    <span class="info-box-text">{{node_name}}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% for agl_area_id, group_name in area_group_list[area_info.area_id] %}
+                        <div class="col-md-3 col-sm-6 col-xs-12 pb-2">
+                            <div class="info-box">
+                                <span class="info-box-icon type-card-group"><i class="fas fa-object-group"></i></span>
+                                <div class="info-box-content d-flex align-items-center border border-left-0">
+                                    <span class="info-box-text">{{group_name}}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% for asl_area_id, scene_name in area_scene_list[area_info.area_id] %}
+                        <div class="col-md-3 col-sm-6 col-xs-12 pb-2">
+                            <div class="info-box">
+                                <span class="info-box-icon type-card-scene"><i class="fas fa-futbol"></i></span>
+                                <div class="info-box-content d-flex align-items-center border border-left-0">
+                                    <span class="info-box-text">{{scene_name}}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+      </div>
+      <div class="modal fade" id="areaSettingModal" tabindex="-1" role="dialog" aria-labelledby="areaSettingModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                            <h5 class="modal-title" id="areaSettingModalLabel">新增區域</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                              <span aria-hidden="true" class="times-size">&times;</span>
+                            </button>
+                    </div>
+                    <form id="area-setting-form">
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="model-setting-area-name">區域名稱</label>
+                                <input type="text" id="model-setting-area-name" class="form-control">
+                            </div>
+                            <input type="hidden" id="area-setting-type" value="area-add">
+                            <input type="hidden" id="area-setting-id" value="">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                            <button type="button" class="btn btn-primary" id="save-setting-area">儲存</button>
+                        </div>
+                    </form>
+                </div>
+          </div>
+      </div>
+      <div class="modal fade" id="areaInfoModal" tabindex="-1" role="dialog" aria-labelledby="areaInfoModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                            <h5 class="modal-title" id="areaInfoModalLabel">區域 1</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                              <span aria-hidden="true" class="times-size">&times;</span>
+                            </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="accordion" id="all-items-div">
+                            <div class="card">
+                                <div class="card-header" id="headingOne">
+                                      <button class="btn btn-link col p-0 text-left load-item" type="button" data-load-type="load_area_node" data-toggle="collapse" data-target="#collapseNode" aria-expanded="true" aria-controls="collapseNode">
+                                          點位
+                                      </button>
+                                </div>
+                                <div id="collapseNode" class="collapse" aria-labelledby="headingOne" data-parent="#all-items-div">
+                                    <div class="card-body p-3" id="area-node-items">
+                                        node-list
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header" id="headingTwo">
+                                    <button class="btn btn-link collapsed col p-0 text-left load-item" type="button" data-load-type="load_area_group" data-toggle="collapse" data-target="#collapseGroup" aria-expanded="false" aria-controls="collapseGroup">
+                                      群組
+                                    </button>
+                                </div>
+                                <div id="collapseGroup" class="collapse" aria-labelledby="headingTwo" data-parent="#all-items-div">
+                                    <div class="card-body p-3" id="area-group-items">
+                                        group-list
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header" id="headingThree">
+                                    <button class="btn btn-link collapsed col p-0 text-left load-item" type="button" data-load-type="load_area_scene" data-toggle="collapse" data-target="#collapseScenes" aria-expanded="false" aria-controls="collapseScenes">
+                                      場景
+                                    </button>
+                                </div>
+                                <div id="collapseScenes" class="collapse" aria-labelledby="headingThree" data-parent="#all-items-div">
+                                    <div class="card-body p-3" id="area-scene-items">
+                                        scene-list
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="info-area-id" value="">
+                        <input type="hidden" id="info-gateway-id" value="">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                    </div>
+                </div>
+          </div>
+      </div>
+      <script id="area_list_template" type="text/text/x-jquery-tmpl">
+          <div class="card border-0 point shadow-none mb-3">
+                <div class="card-header border-0 py-2 px-2 font-weight-bold form-inline" >
+                    <div class="area-info pr-1" data-area-id="${area_id}" data-area-name="${area_name}" > ${area_name} <i class="fas fa-angle-right"></i> </div>
+                    <button class="btn btn-link px-0 ml-2 area-setting" data-area-id="${area_id}"  data-area-name="${area_name}" data-setting-type="modify">
+                          <i class="far fa-edit"></i>
+                    </button>
+                    <button class="btn btn-link btn-trash px-0 ml-2 area-delete" data-area-id="${area_id}"  data-area-name="${area_name}">
+                          <i class="far fa-trash-alt"></i>
+                    </button>
+                </div>
+                <div class="card-body px-2 py-3 shadow-sm form-inline" id="area-body-${area_id}">
+                </div>
+          </div>
+      </script>
+      <script id="area_item_template" type="text/text/x-jquery-tmpl">
+           <div class="col-md-3 col-sm-6 col-xs-12 pb-2">
+                <div class="info-box">
+                    <span class="info-box-icon type-card-${item_type}"><i class="fas fa-${item_icon}"></i></span>
+                    <div class="info-box-content d-flex align-items-center border border-left-0">
+                        <span class="info-box-text">${item_name}</span>
+                    </div>
+                </div>
+            </div>
+      </script>
+      <script id="items_checkbox_template" type="text/text/x-jquery-tmpl">
+           <div class="form-check col form-inline px-0">
+                <input class="form-check-input item-state" type="checkbox" value="${items_id}" id="${items_type}-${items_id}" ${selected} data-save-type="${items_type}">
+                <label class="form-check-label" for="${items_type}-${items_id}">
+                    ${items_name}
+                </label>
+            </div>
+      </script>
+  </section>
+  {% endblock content%}

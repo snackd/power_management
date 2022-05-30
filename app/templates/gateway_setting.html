@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Gateway 設定頁面</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="all,follow">
+    <!-- Bootstrap CSS-->
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google fonts - Roboto -->
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700">
+    <!-- theme stylesheet-->
+    <link href="/static/css/style.default.css" id="theme-stylesheet" rel="stylesheet">
+    <!-- jQuery Circle-->
+    <link href="/static/css/grasp_mobile_progress_circle-1.0.0.min.css" rel="stylesheet">
+    <!-- Custom stylesheet - for your changes-->
+    <!-- Favicon-->
+    <!-- Font Awesome CDN-->
+    <!-- you can replace it by local Font Awesome-->
+    <!-- Font Icons CSS-->
+    <!-- Tweaks for older IEs-->
+    <link rel="shortcut icon" href="/static/ico/dae.png">
+    <link href="/static/css/dae/add-ons.min.css" rel="stylesheet">
+    <link href="/static/css/dae/jquery-ui.css" rel="stylesheet">
+    <link href="/static/css/dae/bootstrap-toggle.min.css" rel="stylesheet">
+    <link href="/static/css/dae/spinner.css" rel="stylesheet">
+    <link href="/static/css/dae/interface.css" rel="stylesheet">
+    <link href="/static/css/custom.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.css">
+    <!--amchart-->
+    <link href="/static/css/custom.css" rel="stylesheet">
+    <link href="/static/css/dae/project.css" rel="stylesheet">
+    <link href="/static/css/dae/amchart.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.js"></script>
+</head>
+
+<body style="background-color:#f7f7f9">
+    <header>
+
+        <nav class="navbar">
+            <div class="container-fluid">
+                <div class="navbar-holder d-flex align-items-center justify-content-between">
+                    <div class="navbar-header">
+                        <!-- <header> -->
+                        <h1 id="{{p_id}}" style="color:white" class="h1 display project_id"><strong>專案名稱:</strong>{{p_name}}</h1>
+                        <!-- </header> -->
+                    </div>
+                    <div align="right">
+                        <input type="button" onclick="javascript:location.href='/project'" class="btn btn-danger" value="上一頁"></input>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <section class="forms">
+        <div class="container-fluid">
+            <div class="row" id="gateway_info">
+                <div class="card project " style="cursor:pointer;" title="新增Gateway">
+                    <div class="card-header " style="background-color:lightgreen">
+                        <div>
+                            <h2 class="h5 display" style="display: inline;"></h2>
+                        </div>
+                    </div>
+                    <div class="card-block text-center">
+                        <div data-toggle="modal" data-target="#new_gateway"><i class="fa fa-plus-square-o fa-5x" style="align-items: center; display: flex;height: 250px;justify-content: center;width: 240px;background-color: #f6f7f9;height: 200px; width: 100%;"
+                                aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+    <div class="modal fade" id="new_gateway" tabindex="-1" role="dialog" aria-labelledby="new_gateway_modal" style="display: none;"
+        aria-hidden="true">
+        <div class="modal-dialog ui-draggable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="new_gateway_modal">新增Gateway</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+                </div>
+                <div class="modal-body">
+                    <div class="dialog container-fluid">
+                        <form method="POST" accept-charset="UTF-8">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-12 col-md-12">
+                                    <div class="form-group">
+                                        <strong>Gateway_uid:</strong>
+                                        <input placeholder="Gateway_uid" class=" form-control" id="gateway_uid" name="gateway_uid" type="text" value="">
+                                        <strong>Gateway別名:</strong>
+                                        <input placeholder="Gateway別名" class="form-control" id="name" name="name" type="text" value="">
+                                        <strong>安裝地點:</strong>
+                                        <div class="row">
+                                            <div class="col-xs-6 col-sm-6 col-md-6">
+                                                <form>
+                                                    <p>請選擇國家</p>
+                                                    <select id="country-list" class="form-control" onchange="changeCity(this.selectedIndex)"></select>
+                                                </form>
+                                            </div>
+                                            <div class="col-xs-6 col-sm-6 col-md-6">
+                                                <form>
+                                                    <p>縣市</p>
+                                                    <select id="city-list" class="form-control"></select>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <input placeholder="鄉、鎮、市名稱" class="form-control" style="margin-top:5px " id="physical_address" name="physical_address" type="text"
+                                            value="">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="new_gateway(this)" class="btn btn-primary new_gateway_insert">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="update_gateway" tabindex="-1" role="dialog" aria-labelledby="update_gateway_modal" style="display: none;"
+        aria-hidden="true">
+        <div class="modal-dialog ui-draggable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="update_gateway_modal">編輯Gateway</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+                </div>
+                <div class="modal-body">
+                    <div class="dialog container-fluid">
+                        <form method="POST" accept-charset="UTF-8">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-12 col-md-12">
+                                    <div class="form-group">
+                                        <strong>Gateway_uid:</strong>
+                                        <input placeholder="Gateway_uid" class="form-control" id="update_gateway_uid" name="update_gateway_uid" type="text" value="">
+                                        <strong>Gateway別名:</strong>
+                                        <input placeholder="Gateway別名" class="form-control" id="update_gateway_name" name="update_gateway_name" type="text" value="">
+                                        <strong>安裝地點:</strong>
+                                        <div class="row">
+                                            <div class="col-xs-6 col-sm-6 col-md-6">
+                                                <form>
+                                                    <p>請選擇國家</p>
+                                                    <select id="update_country-list" class="form-control" onchange="changeCity(this.selectedIndex)"></select>
+                                                </form>
+                                            </div>
+                                            <div class="col-xs-6 col-sm-6 col-md-6">
+                                                <form>
+                                                    <p>縣市</p>
+                                                    <select id="update_city-list" class="form-control"></select>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <input placeholder="鄉、鎮、市名稱" class=" form-control" style="margin-top:5px " id="update_physcial_address" name="update_physcial_address"
+                                            type="text" value="">
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="update_gateway(this)" class="btn btn-primary update_gateway_insert">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Javascript files-->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script type="text/javascript" src="/static/js/tether.min.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.cookie.js"></script>
+    <script type="text/javascript" src="/static/js/grasp_mobile_progress_circle-1.0.0.min.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.nicescroll.min.js"></script>
+    <script type="text/javascript" src="/static/js/jquery.validate.min.js"></script>
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>-->
+    <!--<script type="text/javascript" src="/static/js/charts-home.js"></script>-->
+    <script type="text/javascript" src="/static/js/front.js"></script>
+    <!-- Google Analytics: change UA-XXXXX-X to be your site's ID.-->
+    <script src="/static/plugins/jquery-ui/js/jquery-ui-1.10.4.min.js"></script>
+    <script src="/static/js/dae/jquery-ui-timepicker-addon.js"></script>
+    <script src="/static/js/dae/datetimepicker.js"></script>
+    <script src="/static/js/dae/datepicker-zh-TW.js"></script>
+    <script src="/static/js/dae/gateway.js"></script>
+    <!--<script src="/static/js/dae/project.js"></script>-->
+    <!--<script src="/static/js/dae/address.js"></script>-->
+    <script src="https://use.fontawesome.com/99347ac47f.js"></script>
+    <!---->
+    <script>
+        (function (b, o, i, l, e, r) {
+            b.GoogleAnalyticsObject = l;
+            b[l] || (b[l] =
+                function () {
+                    (b[l].q = b[l].q || []).push(arguments)
+                });
+            b[l].l = +new Date;
+            e = o.createElement(i);
+            r = o.getElementsByTagName(i)[0];
+            e.src = '//www.google-analytics.com/analytics.js';
+            r.parentNode.insertBefore(e, r)
+        }(window, document, 'script', 'ga'));
+        ga('create', 'UA-XXXXX-X');
+        ga('send', 'pageview');
+    </script>
+</body>
+
+</html>

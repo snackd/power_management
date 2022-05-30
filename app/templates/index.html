@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/static/ico/dae.png">
+  <!--<meta http-equiv="X-UA-Compatible" content="IE=edge">-->
+  <title>KDD-LAB 用電型態及數據視覺化呈現</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    type="text/css">
+  <link href="{{ url_for('static', filename='css/dae/index.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/dae/login.css') }}" rel="stylesheet">
+  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css"> -->
+  <link rel="stylesheet" href="https://pingendo.com/assets/bootstrap/bootstrap-4.0.0-beta.1.css" type="text/css">
+</head>
+<!-- <link rel='stylesheet prefetch'href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,700italic,400italic'> -->
+<!-- <script src="/static/sweetalert/dist/sweetalert.min.js"></script> -->
+<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.css"> -->
+<!-- <script src="https://cdn.jsdelivr.net/sweetalert2/6.4.2/sweetalert2.js"></script> -->
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-md navbar-dark bg-secondary">
+    <div class="container">
+      <a class="navbar-brand" href="/"><i class="fa d-inline fa-lg fa-cloud"></i>資料視覺化<b></b></a>
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
+        data-target="#navbar2SupportedContent" aria-controls="navbar2SupportedContent" aria-expanded="false"
+        aria-label="Toggle navigation"> <span class="navbar-toggler-icon"></span> </button>
+      <div class="collapse navbar-collapse text-center justify-content-end" id="navbar2SupportedContent">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="#"><i class="fa d-inline fa-lg fa-envelope-o"></i> Contacts</a>
+          </li>
+        </ul>
+        {% if setting == 'setting' %}
+        <a id="setting_when_nothing" class="btn navbar-btn ml-2 text-white btn-secondary " href="#setting"
+          style="cursor: pointer;"><i class="fa d-inline fa-lg fa-user-circle-o"></i>設定</a>
+        {% elif session_user_name%}
+        <div class="dropdown">
+          <button class="btn navbar-btn ml-2 text-white btn-secondary dropdown-toggle " id="dropdownMenuButton"
+            type="button" data-toggle="dropdown" aria-haspopup="true" style="cursor: pointer;"><img
+              src='/static/img/dae.png' width="20%" height="10%" alt="person" class="img-fluid rounded-circle">
+            {{session_user_name}}</button>
+          <div class="dropdown-menu" href="#dropdownMenuButton">
+            {% if session['role'] == 'Gateway' %}
+            <a class="dropdown-item" href="{{ url_for ('main.control', gateway_id =session['gateway-id'])}}">我的Gateway資訊</a>
+            {% else %}
+            <a class="dropdown-item" href="{{ url_for ('main.select_gateway', send_type='control')}}">我的Gateway資訊</a>
+            {% endif %}
+            <a class="dropdown-item" href="{{ url_for ('main.logout') }}">登出</a>
+          </div>
+        </div>
+        {% elif session['role'] == 'Gateway'%}
+        <a id="sing_in_test" class="btn navbar-btn ml-2 text-white btn-secondary " href="#modal"
+          style="cursor: pointer;"><i class="fa d-inline fa-lg fa-user-circle-o"></i>登入</a>
+        {% else %}
+        <a id="register" class="btn navbar-btn ml-2 text-white btn-secondary " href="#register_modal"
+          style="cursor: pointer;"> &reg;註冊</a>
+        <a id="sing_in_test" class="btn navbar-btn ml-2 text-white btn-secondary " href="#modal"
+          style="cursor: pointer;"><i class="fa d-inline fa-lg fa-user-circle-o"></i>登入</a>
+        {% endif %}
+      </div>
+      {% if error == "Invalid Password" %}
+      <script>
+        swal({
+          title: '密碼錯誤，請輸入正確密碼!',
+          type: 'error'
+        });
+      </script>
+      {% elif error == "Invalid Account" %}
+      <script>
+        swal({
+          title: '無此帳號，請先註冊帳號!',
+          type: 'error'
+        });
+      </script>
+      {% endif %}
+      <!--***********************POPUP THE SAME ACCOUNT MESSAGE************************-->
+      {% if message =="Your account already exist" %}
+      <script>
+        swal({
+          title: "已有相同帳號",
+          type: "error"
+        })
+      </script>
+      {% elif message == "Register Successful" %}
+      <script>
+        swal({
+          title: "註冊成功",
+          type: "success"
+        })
+      </script>
+      {%endif%}
+  </nav>
+  <div class="py-5 gradient-overlay" style="background-image: url(static/img/index/move_frame.jpg);">
+    <div class="container py-5">
+      <div class="row">
+        <div class="col-md-3 text-white">
+        </div>
+        <div class="col-md-9 text-white align-self-center">
+          <h1 class="display-3 mb-4">電力資訊分析</h1>
+          <p class="lead mb-5">網羅所有的用電資訊，分析你想知道的用電知識</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <h1 class="text-center display-3 text-primary">電力產業的節能商業模式與創新</h1>
+          <p class="">節能這件事，不是大家隨手關燈、冷氣不要開太冷那麼簡單而已。這些也許在個人層次上是個好主意，但若是想要在公司層次、甚至產業層次看到效果，顯然不能只靠這些道德勸說
+            。更何況，目前用電的大頭其實是工業而非家庭用電。而現在國際上比較常見的兩種靠「節能」來賺錢的商業模式有兩種。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="row">
+            <div class="col-md-6">
+              <a href="https://www.thenewslens.com/article/81675" target="_blank"><img
+                  class="img-fluid d-block w-100 mb-3 rounded" src="static\img\index\1.jpg"></a>
+              <p class="">
+                在深入探討前，我們可以想想在這個產業各個利益相關者分別有著什麼樣的算盤。對於「電力」這個產業而言，重要的角色不外乎民眾、企業（用電者）以及政府。對於民眾以及企業而言，對於「電力」的訴求不外乎就是穩定、便宜。企業較重視穩定大過便宜、民眾較重視便宜大過穩定，但大致而言沒有太大的差異。
+              </p>
+            </div>
+            <div class="col-md-6">
+              <img class="img-fluid d-block w-100 mb-3 rounded" src="static\img\index\2.jpg">
+              <p class="">
+                要降低大家帳單的數字、同時又能夠維持環保的最好方式，不外乎「節能」兩個字！但是節能這件事，絕對不是要大家隨手關燈、冷氣不要開太冷那麼簡單而已。隨手關燈與冷氣調高也許在個人層次上是個好主意，但若是想要在公司層次、甚至產業層次看到效果，顯然不能只靠這些道德勸說。更何況，目前用電的大頭其實是工業而非家庭用電。而現在國際上比較常見的兩種靠「節能」來賺錢的商業模式有兩種：
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <h1 class="text-center display-3 text-primary">電力新知與能源新聞</h1>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="py-5 bg-light text-dark">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 my-3">
+          <div class="card">
+            <a href="https://www.thenewslens.com/article/82646" target="_blank"><img class="img-fluid"
+                src="static\img\index\3.jpg" alt="Card image"></a>
+            <div class="card-body">
+              <h5>
+                <b>核能救地球？美國環境運動與核工業的論戰</b>
+              </h5>
+              <p class="card-text p-y-1">
+                從「環境進展」給蔡總統的公開信中，我們可以看出，美國核工業對氣候議題呼風喚雨的能力。發展核能與發展再生能源並非二個截然不同的議題，而是處理氣候變化挑戰的不同面向。若我們關心核能安全，對發展再生能源絕不該置身事外。
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 my-3">
+          <div class="card">
+            <a href="https://www.thenewslens.com/article/82366" target="_blank"><img class="img-fluid "
+                src="static\img\index\4.jpg"></a>
+            <div class="card-body">
+              <h5><b>如何將太陽能有效的發揮？你應該知道的幾件事</b></h5>
+              <p class="card-text p-y-1">
+                屋頂種滿電，就真的能達到綠色家園的目標嗎？如果用電方法不改變，裝再多太陽能板也是事倍功半，何況冗長的回收年限也是一大課題。從家庭用電出發，思考如何突破舊有思維的用電方法，擁有更穩定、 安全的「綠色用電環境」。
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 my-3">
+          <div class="card">
+            <a href="https://www.thenewslens.com/article/76040" target="_blank"><img class="img-fluid"
+                src="static\img\index\5.jpg"></a>
+            <div class="card-body">
+              <h5><b>前10大歷史用電量9次在今年</b></h5>
+              <p class="card-text p-y-1">蔡英文強調，解決問題必須對症下藥。這陣子電力供應吃緊的主因，並不是電不夠，而是颱風造成輸電系統受損，讓電送不出來，跟非核家園的政策沒有關係。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="py-5">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <h1 class="display-3 text-primary text-left">台灣有10種發電方式，但能源多元化了嗎？</h1>
+            <p class="" contenteditable="true">
+              815全台大停電後，2006年開始商轉、以天然氣為主要燃料的大潭電廠成了中心點。燃氣發電在過去10年中，電力供給整體佔比翻了將近一番。這裡用一張圖讓讀者快速掌握台灣整體電力供給與使用分佈。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="py-5">
+      <a href="https://www.thenewslens.com/article/76408" target="_blank">
+        <img class="img-fluid d-block mx-auto" title="https://www.thenewslens.com/article/76408"
+          src="static\img\index\6.jpeg">
+      </a>
+    </div>
+    <div class="py-5 text-center bg-light">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-12">
+            <h1>外部連結</h1>
+            <p class="lead">We grow together with the community</p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <img class="img-fluid d-block rounded-circle mx-auto"
+              src="static\img\index\200px-Taiwan_Power_Company_Seal.svg.png">
+            <p class="my-4"><i>我們致力於將各種複雜的數據轉化成各種容易解讀的視覺圖表、文字報導，讓所有人可以輕易了解、討論，展開行動， 以公民科技的力量，創造更多開放資料、開放政府的價值。 </i></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--register_modal-->
+  <div id="register_modal" style="display: none;position: absolute">
+    <form class="login_css" action=/register method="POST">
+      <span class="modal_close"><i class="fa fa-times"></i></span>
+      <header>帳號註冊</header>
+      <div class="form-group"> <label>帳號</label><span>*</span>
+        <input type="text" minlength=3 id="inputaccount" name="inputaccount" placeholder="請輸入註冊帳號" required> </div>
+      <div class="form-group"> <label>密碼</label><span>*</span>
+        <input type="password" minlength=6 id="inputpassword" name="inputpassword" placeholder="請輸入設定密碼" required>
+      </div>
+      <button type="submit" class="user_login" style="cursor: pointer">建立</button>
+    </form>
+  </div>
+  <!--login_modal-->
+  <div id="modal" style="display: none;position: absolute">
+    <form class="login_css" action=/login method="POST">
+      <span class="modal_close"><i class="fa fa-times"></i></span>
+      <header>帳號登入</header>
+      <div class="form-group"> <label>帳號</label><span>*</span>
+        <input type="text" id="account" minlength=3 name="account" placeholder="請輸入帳號" required> </div>
+      <div class="form-group"> <label>密碼</label><span>*</span>
+        <input type="password" minlength=6 id="password" name="password" placeholder="請輸入密碼" required> </div>
+      <button type="submit" class="user_login" style="cursor: pointer">登入</button>
+    </form>
+    <!--</div>-->
+  </div>
+  <!--setting_model-->
+  <div id="setting" style="display: none;position: absolute">
+    <form class="login_css" action=/setting method="POST">
+      <span class="modal_close"><i class="fa fa-times"></i></span>
+      <header>帳號設定</header>
+      <div style="overflow: auto;height: 400px">
+        <div class="form-group"> <label>帳號</label><span>*</span>
+          <input type="text" id="settingaccount" minlength=3 name="settingaccount" placeholder="請輸入帳號設定" required>
+        </div>
+        <div class="form-group"> <label>密碼</label><span>*</span>
+          <input type="password" minlength=6 id="settingpassword" name="settingpassword" placeholder="請輸入密碼設定" required>
+        </div>
+        <div class="form-group"> <label>MQTT-HOST</label><span>*</span>
+          <input type="text" id="setting_mqtt_host" name="setting_mqtt_host" placeholder="請輸入MQTT-HOST設定" required>
+        </div>
+        <div class="form-group"> <label>閘道器-UID</label><span>*</span>
+          <input type="text" id="setting_gateway_UID" name="setting_gateway_UID" placeholder="請輸入閘道器-UID設定" required>
+        </div>
+        <div class="form-group"> <label>Cloud-ip</label><span>*</span>
+          <input type="text" id="setting_cloud_ip" name="setting_cloud_ip" placeholder="請輸入Cloud-ip設定" required>
+        </div>
+        <div class="form-group"> <label>Cloud-port</label><span>*</span>
+          <input type="text" id="setting_cloud_port" name="setting_cloud_port" placeholder="請輸入Cloud-port設定" required>
+        </div>
+        <div class="form-group"> <label>Cloud-path</label><span>*</span>
+          <input type="text" id="setting_cloud_path" name="setting_cloud_path" placeholder="請輸入Cloud-path設定" required>
+        </div>
+        <div class="form-group"> <label>Cloud-key</label><span>*</span>
+          <input type="text" id="setting_cloud_key" name="setting_cloud_key" placeholder="請輸入Cloud-key設定" required>
+        </div>
+        <button type="submit" class="user_login" style="cursor: pointer">設定</button>
+      </div>
+    </form>
+    <!--</div>-->
+  </div>
+  <!--</section>-->
+  </div>
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+    integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous">
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js"
+    integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous">
+  </script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js"
+    integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous">
+  </script>
+  <script src='http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>
+  <script src="{{ url_for('static', filename='js/dae/jquery.leanModal.min.js') }}"></script>
+  <script>
+    $("#setting_when_nothing").leanModal({
+      top: 50,
+      overlay: 0.6,
+      closeButton: ".modal_close"
+    });
+    $("#sing_in_test").leanModal({
+      top: 100,
+      overlay: 0.6,
+      closeButton: ".modal_close"
+    });
+    $("#register").leanModal({
+      top: 100,
+      overlay: 0.6,
+      closeButton: ".modal_close"
+    });
+  </script>
+</body>
+
+
+</html>

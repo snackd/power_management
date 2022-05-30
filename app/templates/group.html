@@ -1,0 +1,394 @@
+{% extends"base.html" %} {% block head %} {{super()}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+<link href="{{ url_for('static', filename='css/dae/group.css') }}" rel="stylesheet">
+
+<script>
+    $(function () {
+        node_list_org = $('#node_list').text(),
+        node_list_str = node_list_org.replace(/\'/g, '\"');
+        node_list = $.parseJSON(node_list_str);
+        $('.top-pagination').click(load_project_group);
+        {% if session['role'] == 'Gateway'%}
+        $('.group-setting').click(showGroupSetting);
+        {% endif %}
+        $('#groupSettingModal').on('hidden.bs.modal', function() {
+            location.reload(true);
+        });
+        $('#save-setting-group').click(addGroup);
+        $('#save-group-name').click(saveGroupInfo);
+        $('.group-delete').click(deleteGroup);
+        {% if session['role'] == 'Gateway'%}
+        $('.node-delete').click(deleteNode);
+        {% endif %}
+    });
+
+    function deleteGroup() {
+        var group_id = $(this).attr('data-group-id'),
+            group_number = $(this).attr('data-group-number'),
+            group_name = $(this).attr('data-group-name');
+        if (confirm('確定要刪除群組「' + group_name + '」?')) {
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1.0/delete_group',
+                data: {
+                    group_id: group_id,
+                    group_number: group_number
+                },
+                dataType: 'json'
+            }).then(function(result) {
+                if (!result['result']) {
+                    alert(result['message']);
+                    return false;
+                }
+                location.reload();
+            });
+        }
+    }
+
+    function deleteNode() {
+        var group_id = $(this).attr('data-group-id'),
+            group_number = $(this).attr('data-group-number'),
+            node_id = $(this).attr('data-node-id'),
+            node_name = $(this).attr('data-node-name');
+
+        if (confirm('確定要刪除點位「' + node_name + '」?')) {
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1.0/delete_group_node',
+                data: {
+                    node_id: node_id * 1,
+                    group_id: group_id,
+                    group_number: group_number
+                },
+                dataType: 'json'
+            }).then(function(result) {
+                if (!result['result']) {
+                    alert(result['message']);
+                    return false;
+                }
+                $('#group-node-' + group_id + '-' + node_id).remove();
+                node_list[node_id]['group_id'] = '';
+            })
+        }
+
+    }
+
+    function addGroup() {
+        var type = $('#group-setting-type').val();
+        if (type == 'modify') {
+            return false;
+        }
+        var group_name = $('#model-setting-group-name').val(),
+            group_number = $('#model-setting-group-number').val(),
+            group_nodes_object = $('#modal-all-node .node-check:checked'),
+            project_id = $('#add-group-button').attr('data-project-id'),
+            node_list = [];
+
+        $.each(group_nodes_object, function(key, value) {
+            nodes = $(value).attr('data-node-id');
+            node_list.push(nodes);
+        });
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/add_group',
+            data: {
+                project_id: project_id,
+                group_name: group_name,
+                group_number: group_number,
+                node_list: node_list
+            }
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+            alert('儲存成功!');
+            location.reload(true);
+        })
+    }
+
+    function saveGroupInfo() {
+        var group_id = $('#group-setting-id').val(),
+            group_name = $('#model-setting-group-name').val(),
+            group_number = $('#model-setting-group-number').val();
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/save_group_info',
+            data: {
+                group_id: group_id,
+                group_name: group_name,
+                group_number: group_number
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+            $('#model-setting-group-number').attr('data-org-group-number', group_number)
+            alert('儲存成功!');
+        });
+    }
+
+    function nodeCheck() {
+        var modal_type = $('#group-setting-type').val(),
+            node_id = $(this).attr('data-node-id'),
+            group_id = $('#group-setting-id').val(),
+            group_number = $('#model-setting-group-number').attr('data-org-group-number'),
+            checked = $(this)[0].checked ? 1 : 0;
+        if (modal_type !== 'group_modify') {
+            return true;
+        }
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/group_node_check',
+            data: {
+                node_id: node_id,
+                group_id: group_id,
+                group_number: group_number,
+                checked: checked
+            }
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+        });
+    }
+
+    function showGroupSetting() {
+        var type = $(this).attr('data-setting-type'),
+            group_id = '', group_node_list = [];
+        $('#groupSettingModalLabel').text('新增群組');
+        $('#group-setting-type').val('group_add');
+        $('#group-setting-id').val('');
+        $('#group-setting-form')[0].reset();
+        $('#save-group-name:not(d-none)').addClass('d-none');
+        $('#save-setting-group').removeClass('d-none');
+        $('.node-check').off('click');
+        if (type === 'modify') {
+            group_id = $(this).attr('data-group-id'),
+            group_name = $(this).attr('data-group-name'),
+            group_number = $(this).attr('data-group-number');
+
+            $('#groupSettingModalLabel').text('修改群組');
+            $('#model-setting-group-name').val(group_name);
+            $('#model-setting-group-number').val(group_number);
+            $('#model-setting-group-number').attr('data-org-group-number', group_number);
+            $('#group-setting-id').val(group_id);
+            $('#group-setting-type').val('group_modify');
+            $('#save-group-name').removeClass('d-none');
+            $('#save-setting-group:not(d-none)').addClass('d-none');
+        }
+        $('#modal-all-node').html('');
+        $.each(node_list, function(node_id, node_info) {
+            var node_template_value = [{
+                    node_id: node_id,
+                    node_number: node_info['num'],
+                    node_name: node_info['name'],
+                    checked: node_info['group_id'] * 1 === group_id * 1 && group_id * 1 !== 0 ? 'checked' : '',
+                    disabled: node_info['group_id'] * 1 === 0 || node_info['group_id'] * 1 === group_id * 1 ? '' : 'disabled'
+                }];
+            $('#node_item_template').tmpl(node_template_value).appendTo('#modal-all-node');
+        });
+        $('.node-check').click(nodeCheck);
+        $('#groupSettingModal').modal('show');
+    }
+
+    function load_project_group() {
+        var project_id = $(this).attr('data-project-id'),
+            now_project_id = $('.top-pagination-active').attr('data-project-id');
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/load_project_group',
+            data: {
+                project_id: project_id
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            if (!result['result']) {
+                $message = result['message'];
+                return false;
+            }
+            $('#add-group-button').attr('data-project-id', project_id);
+            {% if session['role'] == 'Gateway'%}
+            $('.group-setting').off("click");
+            $('.group-delete').off("click");
+            $('.node-delete').off("click");
+            {% endif %}
+            $('#all-group-div').html('');
+            if (Object.keys(result['data']['group_list']).length > 0) {
+                node_list = result['data']['node_list'];
+                $('#node_list').text(JSON.stringify(result['data']['node_list']));
+                $.each(result['data']['group_list'], function(group_id, group_info) {
+                    var group_node_list = [],
+                        group_template_value = [{
+                            group_id: group_id,
+                            group_name: group_info['name'],
+                            group_number: group_info['num']
+                        }];
+                    $('#group_list_template').tmpl(group_template_value).appendTo('#all-group-div');
+                    $('#group-body-' + group_id).html('');
+                    if (result['data']['group_list'][group_id]['node-data']) {
+                        $.each(result['data']['group_list'][group_id]['node-data'], function(node_id, node_info) {
+                            var node_template_value = [{
+                                    node_id: node_id,
+                                    node_number: node_info[4],
+                                    node_name: node_info[5],
+                                    group_id: group_id,
+                                    group_number: group_info['num']
+                                }];
+                            $('#group_item_template').tmpl(node_template_value).appendTo('#group-body-' + group_id);
+                            group_node_list.push(node_id);
+                        });
+                    }
+                })
+            }
+
+            $('.top-pagination').off("click");
+            $('#project-' + project_id).removeClass('top-pagination');
+            $('#project-' + project_id).addClass('top-pagination-active');
+            $('#project-' + now_project_id).removeClass('top-pagination-active');
+            $('#project-' + now_project_id).addClass('top-pagination');
+            $('.top-pagination').click(load_project_group);
+            {% if session['role'] == 'Gateway'%}
+            $('.group-setting').click(showGroupSetting);
+            $('.group-delete').click(deleteGroup);
+            $('.node-delete').click(deleteNode);
+            {% endif %}
+        });
+    }
+
+
+</script>
+{% endblock head%} {% block content%}
+
+<div class="page home-page">
+  <!-- navbar-->
+  <header class="header">
+    <nav class="navbar py-1">
+      <div class="container-fluid px-1">
+        <div class="navbar-holder d-flex align-items-center justify-content-between">
+          <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#" class="navbar-toggler btn-link"><i class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+            <a href="/" class="navbar-brand">
+              <div class="brand-text hidden-sm-down"><span>電力資訊 </span></div>
+            </a>
+          </div>
+          <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+            {% if role == 'Cloud' %}
+            <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+            {%endif%}
+            <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a></li>
+            <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i class="fas fa-sign-out-alt"></i></a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <!-- Counts Section -->
+
+  <section class="h-100">
+      <div class="d-none" id="node_list">{{node_list}}</div>
+      <div class="form-inline px-4 pagination-div">
+          {% for gateway_info in gateway_list %}
+              {% set active = ' ' %}
+              {% if loop.index == 1 %}
+                  {% set active = '-active' %}
+              {% endif %}
+              <button class="top-pagination{{active}} h-100 px-4" id="gateway-{{gateway_info.id}}" data-project-id="{{gateway_info.id}}">{{gateway_info.name}}</button>
+          {% endfor %}
+      </div>
+      <div class="px-4 py-3">
+          {% if session['role'] == 'Gateway'%}
+          <button class="btn btn-success group-setting mb-3" data-project-id="" id="add-group-button" data-setting-type="add">新增群組</button>
+          {% endif %}
+          <div id="all-group-div">
+              {% for group_id, group_info in group_list.items() %}
+                  <div class="card border-0 point shadow-none mb-3">
+                      <div class="card-header border-0 py-2 px-2 form-inline" >
+                          <div class="group-setting pr-1 {% if session['role'] == 'Gateway'%} cursor-pointer {% endif %}" data-group-id="{{group_id}}" data-group-name="{{group_info['group-name']}}" data-group-number="{{group_info['group-number']}}" data-setting-type="modify">{{group_info['group-name']}} <i class="fas fa-angle-right"></i> </div>
+                          {% if session['role'] == 'Gateway'%}
+                          <button class="btn btn-link btn-trash px-0 ml-2 group-delete" data-group-id="{{group_id}}"  data-group-name="{{group_info['group-name']}}" data-group-number="{{group_info['group-number']}}">
+                              <i class="far fa-trash-alt"></i>
+                          </button>
+                          {% endif %}
+                      </div>
+                      <div class="card-body px-2 py-3 shadow-sm form-inline" id="group-body-{{group_id}}">
+                          {% for node_id, node_info in group_info['node-data'].items() %}
+                              <button class="btn btn-primary align-middle ml-2  node-delete" data-node-id="{{node_id}}" data-group-id="{{group_id}}" data-node-name="{{node_info[4]}}" data-group-number="{{group_info['group-number']}}" id="group-node-{{group_id}}-{{node_id}}">
+                                  {{node_info[4]}} {% if session['role'] == 'Gateway'%}<i class="btn btn-link fas fa-times  p-0 ml-2 my-1"></i> {%endif%}
+                              </button>
+                          {% endfor %}
+                      </div>
+                  </div>
+              {% endfor %}
+          </div>
+      </div>
+      <div class="modal fade" id="groupSettingModal" tabindex="-1" role="dialog" aria-labelledby="groupSettingModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                            <h5 class="modal-title" id="groupSettingModalLabel">新增群組</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                              <span aria-hidden="true" class="times-size">&times;</span>
+                            </button>
+                    </div>
+                    <form id="group-setting-form">
+                        <div class="modal-body">
+                            <div class="form-inline pb-3">
+                                <div class="col px-0">
+                                    <div class="form-group pb-2">
+                                        <label for="model-setting-group-name" class="pr-3">名稱:</label>
+                                        <input type="text" id="model-setting-group-name" class="form-control col col-sm-9">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="model-setting-group-number" class="pr-3">號碼:</label>
+                                        <input type="number" min="1" max="63" id="model-setting-group-number" class="form-control col col-sm-9" data-org-group-number="">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary mx-2" id="save-group-name">儲存</button>
+                            </div>
+                            <div class="form-group">
+                                <label>點位:</label>
+                                <div id="modal-all-node" class="p-2 border-node-list">
+
+                                </div>
+                            </div>
+                            <input type="hidden" id="group-setting-type" value="area-add">
+                            <input type="hidden" id="group-setting-id" value="">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                            <button type="button" class="btn btn-primary" id="save-setting-group">儲存</button>
+                        </div>
+                    </form>
+                </div>
+          </div>
+      </div>
+      <script id="group_list_template" type="text/text/x-jquery-tmpl">
+          <div class="card border-0 point shadow-none mb-3">
+              <div class="card-header border-0 py-2 px-2 form-inline" >
+                  <div class="group-setting pr-1 cursor-pointer" data-group-id="${group_id}" data-group-name="${group_name}" data-group-number="${group_number}" data-setting-type="modify"> ${group_name} <i class="fas fa-angle-right"></i> </div>
+                  <button class="btn btn-link btn-trash px-0 ml-2 group-delete" data-group-id="${group_id}"  data-group-name="${group_name}" data-group-number="${group_number}">
+                      <i class="far fa-trash-alt"></i>
+                  </button>
+              </div>
+              <div class="card-body px-2 py-3 shadow-sm form-inline" id="group-body-${group_id}">
+              </div>
+          </div>
+      </script>
+      <script id="group_item_template" type="text/text/x-jquery-tmpl">
+           <button class="btn btn-primary align-middle ml-2 node-delete" data-node-id="${node_id}" data-group-id="${group_id}" data-node-name="${node_name}"  data-group-number="${group_number}" id="group-node-${group_id}-${node_id}">
+              ${node_name} <i class="btn btn-link fas fa-times p-0 ml-2 my-1"></i>
+           </button>
+      </script>
+      <script id="node_item_template" type="text/text/x-jquery-tmpl">
+           <div class="form-inline form-check">
+                <input class="form-check-input node-check" type="checkbox" value="" id="node-${node_id}" ${checked} data-node-id="${node_id}" data-node-number="${node_number}" ${disabled}>
+                <label class="form-check-label" for="node-${node_id}">
+                    ${node_name}
+                </label>
+            </div>
+      </script>
+  </section>
+  {% endblock content%}

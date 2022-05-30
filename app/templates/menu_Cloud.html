@@ -1,0 +1,50 @@
+<div class="main-menu">
+    <ul id="side-main-menu" class="side-menu list-unstyled">
+        <li>
+        <li>
+            <a href="{{ url_for('main.select_gateway', send_type='demand_dashboard') }}" class="px-4 py-3 gateway"><i
+                    class="fas fa-chart-bar mx-2" aria-hidden="true"></i><span>需量資訊</span></a>
+        </li>
+        <li>
+            <a href="{{ url_for('main.select_gateway', send_type='control') }}" class="px-4 py-3 control project"><i
+                    class="fas fa-sliders-h mx-2" aria-hidden="true"></i><span>即時控制</span></a>
+        </li>
+        <div class="admin-menu">
+            <ul id="side-admin-menu" class="side-menu list-unstyled">
+                {% set collapse_item = ['project-setting', 'area', 'node', 'group', 'scene', 'schedule', 'festival',
+                'files'] %}
+                <li><a href="#pages-nav-list" data-toggle="collapse"
+                       class="form-inline px-4 py-3 {% if path_route[1] in collapse_item %} page-selected {% endif %}"><i
+                        class="fas fa-cog mx-2" aria-hidden="true"></i><span>裝置設定</span>
+                    <div class="arrow pull-right"><i class="fa fa-angle-down mx-2"></i></div>
+                </a>
+                    <ul id="pages-nav-list" class="list-unstyled collapse show" aria-expanded="true" style="">
+                        <li><a href="{{ url_for('main.select_gateway', send_type='demand_setting') }}"
+                               class="py-3 px-4 demand_setting"><i class="fas fa-bolt mx-2" aria-hidden="true"></i>需量設定</a>
+                        </li>
+                        <li><a href="{{ url_for('main.select_gateway', send_type='demand_group_setting') }}"
+                               class="py-3 px-4 demand_group_setting"><i class="fas fa-bolt mx-2" aria-hidden="true"></i>卸載群組設定</a>
+                        </li>
+                        <li><a href="{{ url_for('main.select_gateway', send_type='area') }}"
+                               class="py-3 px-4 area"><i class="fas fa-flag mx-2" aria-hidden="true"></i>區域設定</a>
+                        </li>
+                        <li><a href="{{ url_for('main.node') }}" class="py-3 px-4 node"><i
+                                class="fas fa-lightbulb mx-2" aria-hidden="true"></i>點位設定</a></li>
+                        <li><a href="{{ url_for('main.select_gateway', send_type='group') }}" class="py-3 px-4 group"><i
+                                class="fas fa-object-group mx-2" aria-hidden="true"></i>群組設定</a></li>
+                        <li><a href="{{ url_for('main.select_gateway', send_type='scene')}}" class="py-3 px-4 scene"><i
+                                class="fas fa-futbol mx-2" aria-hidden="true"></i>場景設定</a></li>
+                        <!--<li><a href="{{ url_for('main.select_gateway', send_type='schedule') }}"
+                               class="py-3 px-4 schedule_prev"><i class="fa fa-clock mx-2"
+                                                                  aria-hidden="true"></i>排程設定</a></li>
+                        <li><a href="{{ url_for('main.select_gateway', send_type='festival') }}"
+                               class="py-3 px-4 festival"><i class="fa fa-calendar mx-2" aria-hidden="true"></i>特別節日(日曆)</a>
+                        </li>-->
+                        <li><a href="{{ url_for('main.select_gateway', send_type='files') }}" class="px-4 py-3 files"><i
+                                class="fa fa-file mx-2" aria-hidden="true"></i>檔案匯入/匯出</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </ul>
+</div>

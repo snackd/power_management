@@ -1,0 +1,114 @@
+{% extends "base.html" %} {% block head %} {{super()}}
+<script src="{{ url_for('static', filename='js/dae/festival.js') }}"></script>
+<link href="{{ url_for('static', filename='css/dae/add-ons.min.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/dae/interface.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/dae/festival.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/dae/amchart.css') }}" rel="stylesheet">
+{% endblock head%} {% block content%}
+<div class="page home-page">
+    <!-- navbar-->
+    <header class="header">
+        <nav class="navbar py-1">
+          <div class="container-fluid px-1">
+            <div class="navbar-holder d-flex align-items-center justify-content-between">
+              <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#" class="navbar-toggler btn-link        n"><i class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+                <a href="/" class="navbar-brand">
+                  <div class="brand-text hidden-sm-down"><span>電力資訊 </span></div>
+                </a>
+              </div>
+              <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+                {% if role == 'Cloud' %}
+                <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+                {%endif%}
+                <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a></li>
+                <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i class="fas fa-sign-out-alt"></i></a></li>
+              </ul>
+            </div>
+          </div>
+        </nav>
+      </header>
+    <!-- Counts Section -->
+    <section class="dashboard-counts section-padding">
+        <div class="col-lg-12">
+            <h1 class="page-header">裝置設定</h1>
+        </div>
+        <div id="page-wrapper" calss="text-primary" style="padding: 1%">
+            <div class="card" style="border: 1px solid rgba(0,0,0,.125);">
+                <ol class="breadcrumb">
+                    <i class="fa fa-home"></i><a href="{{ url_for('main.device') }}" style="font-family: Microsoft JhengHei">裝置設定</a>>
+                    <a href="festival" style="font-family: Microsoft JhengHei">特別節日</a>
+
+                </ol>
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#control_time" role="tab" data-toggle="tab">日曆表</a>
+                    </li>
+
+                </ul>
+
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane fade in active show" id="festival_time">
+                        <div class="row" align="center">
+                            <div class=" col-sm-12 col-md-12 col-lg-12">
+                                <div id="festival_date"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12 col-sm-offset-12 col-md-12 col-md-offset-12 col-lg-12 col-lg-offset- 12">
+                                <button id="btn_festival_save" class="btn btn-lg btn-primary btn-block">儲存節日設定</button>
+                            </div>
+                        </div>
+                        <div class="col-lg-12 col-md-12">
+                            <table class="table table-bordered festival">
+                                <thead class="tablerow_festival_setting_list">
+                                    <tr>
+                                        <th>節日</th>
+                                        <th>說明</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <!--schedule_group_information_modal_B-->
+                        <div class="modal fade" id="schedule_group_information_modal_holiday" data-target="#myModal" tabindex="-1" role="dialog"
+                            aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">群組狀態表</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                    </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="dialog container-fluid">
+                                            <div style=" margin: 10px;"><span>起始時間:</span> <input class="form-control  update_timepicker" id="update_holiday_start_time"
+                                                    type="text" name="start_time" value="">
+                                                <span>結束時間:</span><input class="form-control update_timepicker" id="update_holiday_end_time"
+                                                    type="text" name="end_time" value=""></div>
+                                            <!--</div>-->
+                                            <form method="POST" accept-charset="UTF-8">
+                                                <div class="row" style="margin: 10px 10px 10px 10px ">
+                                                    <table class="table table-bordered schedule_time_table_holiday">
+                                                        <thead class="tablerow_group_state_list">
+                                                            <tr>
+                                                                <th>群組名稱</th>
+                                                                <th>群組狀態</th>
+                                                                <th>編輯</th>
+                                                            </tr>
+                                                        </thead>
+                                                    </table>
+                                                </div>
+                                            </form>
+                                            <div class="update_holiday" style="margin:5px" id="holiday"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    </section>
+    </script>
+    {% endblock content%}

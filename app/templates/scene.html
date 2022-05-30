@@ -1,0 +1,558 @@
+{% extends"base.html" %} {% block head %} {{super()}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+<link href="{{ url_for('static', filename='css/dae/scene.css') }}" rel="stylesheet">
+
+{% endblock head%} {% block content%}
+<script>
+    $(function () {
+        node_list_org = $('#node_list').text(),
+        node_list_str = node_list_org.replace(/\'/g, '\"'),
+        node_list = $.parseJSON(node_list_str),
+        device_switch_type = [1, 2],
+        all_scene_node_list_org = $('#scene_node_list').text();
+        all_scene_node_list_str = all_scene_node_list_org.replace(/\'/g, '\"'),
+        all_scene_node_list = $.parseJSON(all_scene_node_list_str);
+
+        $('.top-pagination').click(load_project_scene);
+        {% if session['role'] == 'Gateway'%}
+        $('.scene-setting').click(showScenesSetting);
+        {% endif %}
+        $('#sceneSettingModal').on('hidden.bs.modal', function() {
+            location.reload(true);
+        });
+        $('#save-setting-scene').click(addScenes);
+        $('#save-scene-name').click(saveScenesInfo);
+        {% if session['role'] == 'Gateway'%}
+        $('.scene-delete').click(deleteScenes);
+        $('.node-delete').click(deleteNode);
+        {% endif %}
+        $('.selected-node, .unselected-node').click(selectedNode);
+    });
+
+    function deleteScenes() {
+        var scene_id = $(this).attr('data-scene-id'),
+            scene_number = $(this).attr('data-scene-number'),
+            scene_name = $(this).attr('data-scene-name');
+
+        if (confirm('確定要刪除場景「' + scene_name + '」?')) {
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1.0/delete_scene',
+                data: {
+                    scene_id: scene_id,
+                    scene_number: scene_number
+                },
+                dataType: 'json'
+            }).then(function(result) {
+                if (!result['result']) {
+                    alert(result['message']);
+                    return false;
+                }
+                location.reload();
+            });
+        }
+    }
+
+    function selectedNode() {
+        var setting_type = $('#scene-setting-type').val(),
+            select_type = $(this).attr('data-select-type'),
+            select_node_object = $('#'+ select_type +'-div .node-check:checked'),
+            node_state_list = [], selected_list = [],
+            scene_id = $('#scene-setting-id').val(),
+            scene_number = $('#model-setting-scene-number').attr('data-org-scene-number');
+        $.each(select_node_object, function(key, value) {
+            var node_id = $(value).attr('data-node-id'),
+            node_type = $(value).attr('data-node-type'),
+            node_state_obj = $('#node-state-' + node_id),
+            node_state = $.inArray(node_type * 1, {{G_CONTROL_VALUE_TYPE_LIST}}) >= 0 ? node_state_obj.val() : (node_state_obj[0].checked ? 100 : 0);
+            selected_list.push(node_id);
+            node_state_list.push(node_state);
+        });
+        if (setting_type === 'scene_add') {
+            select_node_object.attr('checked', false);
+            var appendAssoc = {
+                'selected': 'unselected',
+                'unselected': 'selected'
+            };
+            if (select_type === 'selected') {
+                 select_node_object.removeClass('scene_enabled_change');
+            } else {
+                 select_node_object.addClass('scene_enabled_change');
+            }
+
+            $('#' + appendAssoc[select_type] + '-div').append($(select_node_object.parents('.form-check')).get().reverse());
+        } else {
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1.0/scene_' + select_type + '_node',
+                data: {
+                    node_id_list: selected_list,
+                    node_state_list: node_state_list,
+                    scene_id: scene_id,
+                    scene_number: scene_number
+                },
+                dataType: 'json'
+            }).then(function(result) {
+                if (!result['result']) {
+                    alert(result['message']);
+                    return false;
+                }
+                select_node_object.attr('checked', false);
+                var appendAssoc = {
+                    'selected': 'unselected',
+                    'unselected': 'selected'
+                };
+                if (select_type === 'selected') {
+                     select_node_object.removeClass('scene_enabled_change');
+                } else {
+                     select_node_object.addClass('scene_enabled_change');
+                }
+
+                $('#' + appendAssoc[select_type] + '-div').append($(select_node_object.parents('.form-check')).get().reverse());
+            });
+        }
+    }
+
+    function deleteNode() {
+        var scene_id = $(this).attr('data-scene-id'),
+            scene_number = $(this).attr('data-scene-number'),
+            node_id = $(this).attr('data-node-id'),
+            node_name = $(this).attr('data-node-name');
+
+        if (confirm('確定要刪除點位「' + node_name + '」?')) {
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1.0/delete_scene_node',
+                data: {
+                    node_id: node_id,
+                    scene_id: scene_id,
+                    scene_number: scene_number
+                },
+                dataType: 'json'
+            }).then(function(result) {
+                if (!result['result']) {
+                    alert(result['message']);
+                    return false;
+                }
+                scene_node_list_org = $('#scene-nodes-' + scene_id).val();
+                scene_node_list = scene_node_list_org.split(",");
+                scene_node_list_new = jQuery.grep(scene_node_list, function( n, i ) {
+                      return ( n !== node_id);
+                });
+                $('#scene-nodes-' + scene_id).val(scene_node_list_new);
+                $('#scene-node-' + scene_id + '-' + node_id).remove();
+            })
+        }
+
+    }
+
+    function addScenes() {
+        var type = $('#scene-setting-type').val();
+        if (type == 'modify') {
+            return false;
+        }
+        var scene_name = $('#model-setting-scene-name').val(),
+            scene_number = $('#model-setting-scene-number').val(),
+            scene_nodes_object = $('#selected-div .node-check'),
+            add_node_list = [], add_node_state_list = [];
+
+        $.each(scene_nodes_object, function(key, value) {
+            var node_id = $(value).attr('data-node-id'),
+            node_type = $(value).attr('data-node-type'),
+            node_state = $.inArray(node_type * 1, {{G_CONTROL_VALUE_TYPE_LIST}}) >= 0 ? $('#node-state-' + node_id).val() : ($('#node-state-' + node_id)[0].checked ? 100 : 0);
+            add_node_list.push(node_id);
+            add_node_state_list.push(node_state);
+        });
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/add_scene',
+            data: {
+                scene_name: scene_name,
+                scene_number: scene_number,
+                node_list: add_node_list,
+                node_state_list: add_node_state_list
+            }
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+            alert('儲存成功!');
+            location.reload(true);
+        })
+    }
+
+    function saveScenesInfo() {
+        var scene_id = $('#scene-setting-id').val(),
+            scene_name = $('#model-setting-scene-name').val(),
+            scene_number = $('#model-setting-scene-number').val();
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/save_scene_info',
+            data: {
+                scene_id: scene_id,
+                scene_name: scene_name,
+                scene_number: scene_number
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+            $('#model-setting-scene-number').attr('data-org-scene-number', scene_number)
+            alert('儲存成功!');
+        });
+    }
+
+    function showScenesSetting() {
+        var type = $(this).attr('data-setting-type'),
+            scene_id = '', scene_node_list = [];
+
+        $('#sceneSettingModalLabel').text('新增場景');
+        $('#scene-setting-type').val('scene_add');
+        $('#scene-setting-id').val('');
+        $('#scene-setting-form')[0].reset();
+        $('#save-scene-name:not(d-none)').addClass('d-none');
+        $('#save-setting-scene').removeClass('d-none');
+        $('.scene_enabled_change').off('change');
+        if (type === 'modify') {
+            scene_id = $(this).attr('data-scene-id'),
+            scene_name = $(this).attr('data-scene-name'),
+            scene_number = $(this).attr('data-scene-number'),
+            scene_nodes_string = $('#scene-nodes-' + scene_id).val(),
+            scene_node_list = scene_nodes_string.split(",");
+
+            $('#sceneSettingModalLabel').text('修改場景');
+            $('#model-setting-scene-name').val(scene_name);
+            $('#model-setting-scene-number').val(scene_number);
+            $('#model-setting-scene-number').attr('data-org-scene-number', scene_number);
+            $('#scene-setting-id').val(scene_id);
+            $('#scene-setting-type').val('scene_modify');
+            $('#save-scene-name').removeClass('d-none');
+            $('#save-setting-scene:not(d-none)').addClass('d-none');
+        }
+        $('#selected-div').html('');
+        $('#unselected-div').html('');
+        $.each(node_list, function(node_id, node_info) {
+            var append_template, node_template_value = [{
+                    node_id: node_id,
+                    node_name: node_info['name'],
+                    node_type: node_info['type_id']
+                }];
+            append_template = $.inArray(node_id, scene_node_list) >= 0 ?  'selected-div' : 'unselected-div';
+
+            $('#node_item_template').tmpl(node_template_value).appendTo('#' + append_template);
+
+            node_modify_state = type === 'modify' && all_scene_node_list[scene_id]['node-data'][node_id] ? all_scene_node_list[scene_id]['node-data'][node_id][6] : 0;
+
+            var add_template, node_state_value = [{
+                scene_id: scene_id,
+                scene_enabled_change: $.inArray(node_id, scene_node_list) >= 0 ? 'scene_enabled_change' : '',
+                node_id: node_id,
+                node_state: $.inArray(node_info['type_id'], {{G_CONTROL_VALUE_TYPE_LIST}}) >= 0 ? node_modify_state : (node_modify_state > 0 ? 'checked' : '' )
+            }];
+
+            add_template = $.inArray(node_info['type_id'], {{G_CONTROL_VALUE_TYPE_LIST}}) >= 0 ? 'scene_value_template' : 'scene_switch_template' ;
+            $('#' + add_template).tmpl(node_state_value).appendTo('#node-state-div-' + node_id);
+        });
+        $('.scene_enabled_change').change(sceneEnabledChange);
+        $('#sceneSettingModal').modal('show');
+    }
+
+    function sceneEnabledChange() {
+        var node_id = $(this).attr('data-node-id'),
+            scene_id = $(this).attr('data-scene-id'),
+            node_state_obj = $('#node-state-' + node_id),
+            node_state = $.inArray(node_list[node_id]['type_id'], {{G_CONTROL_VALUE_TYPE_LIST}}) >= 0 ? node_state_obj.val() : (node_state_obj[0].checked ? 1 : 0 );
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/scene_enabled_change',
+            data: {
+                node_id: node_id,
+                scene_id: scene_id,
+                node_state: node_state
+            }
+        }).then(function(result) {
+            if (!result['result']) {
+                alert(result['message']);
+                return false;
+            }
+        })
+    }
+
+    function load_project_scene() {
+        var project_id = $(this).attr('data-project-id'),
+            now_project_id = $('.top-pagination-active').attr('data-project-id');
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1.0/load_project_scene',
+            data: {
+                project_id: project_id
+            },
+            dataType: 'json'
+        }).then(function(result) {
+            if (!result['result']) {
+                $message = result['message'];
+                return false;
+            }
+            {% if session['role'] == 'Gateway'%}
+            $('.scene-setting').off("click");
+            $('.scene-delete').off("click");
+            $('.node-delete').off("click");
+            {% endif %}
+            $('#all-scene-div').html('');
+            if (Object.keys(result['data']['scene_list']).length > 0) {
+                node_list = result['data']['node_list'];
+                all_scene_node_list = result['data']['scene_list']
+                $('#node_list').text(JSON.stringify(result['data']['node_list']));
+                $.each(result['data']['scene_list'], function(scene_id, scene_info) {
+                    var scene_node_list = [],
+                        scene_template_value = [{
+                            scene_id: scene_id,
+                            scene_name: scene_info['scene-name'],
+                            scene_number: scene_info['scene-number']
+                        }];
+                    $('#scene_list_template').tmpl(scene_template_value).appendTo('#all-scene-div');
+                    $('#scene-body-' + scene_id).html('');
+                    if (result['data']['scene_list'][scene_id]['node-data']) {
+                        $.each(result['data']['scene_list'][scene_id]['node-data'], function(node_id, node_info) {
+                            var node_template_value = [{
+                                    node_id: node_id,
+                                    node_name: node_info[4],
+                                    node_state: node_info[6],
+                                    scene_id: scene_id,
+                                    scene_number: scene_number
+                                }];
+                            $('#scene_item_template').tmpl(node_template_value).appendTo('#scene-body-' + scene_id);
+                            scene_node_list.push(node_id);
+                        });
+                    }
+                    $('#scene-nodes-' + scene_id).val(scene_node_list);
+                })
+            }
+
+            $('.top-pagination').off("click");
+            $('#project-' + project_id).removeClass('top-pagination');
+            $('#project-' + project_id).addClass('top-pagination-active');
+            $('#project-' + now_project_id).removeClass('top-pagination-active');
+            $('#project-' + now_project_id).addClass('top-pagination');
+            $('.top-pagination').click(load_project_scene);
+            {% if session['role'] == 'Gateway'%}
+            $('.scene-setting').click(showScenesSetting);
+            $('.scene-delete').click(deleteScenes);
+            $('.node-delete').click(deleteNode);
+            {% endif %}
+        });
+    }
+
+
+</script>
+
+<div class="page home-page">
+  <!-- navbar-->
+  <header class="header">
+    <nav class="navbar py-1">
+      <div class="container-fluid px-1">
+        <div class="navbar-holder d-flex align-items-center justify-content-between">
+          <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#" class="navbar-toggler btn-link"><i class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+            <a href="/" class="navbar-brand">
+              <div class="brand-text hidden-sm-down"><span>電力資訊 </span></div>
+            </a>
+          </div>
+          <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+            {% if role == 'Cloud' %}
+            <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+            {%endif%}
+            <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a></li>
+            <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i class="fas fa-sign-out-alt"></i></a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <!-- Counts Section -->
+
+  <section class="h-100">
+      <div class="d-none" id="node_list">{{node_list}}</div>
+      <div class="d-none" id="scene_node_list">{{scene_list}}</div>
+      <div class="form-inline px-4 pagination-div">
+          {% for gateway_info in gateway_list %}
+              {% set active = ' ' %}
+              {% if loop.index == 1 %}
+                  {% set active = '-active' %}
+              {% endif %}
+              <button class="top-pagination{{active}} h-100 px-4" id="gateway-{{gateway_info.id}}" data-gateway-id="{{gateway_info.id}}">{{gateway_info.name}}</button>
+          {% endfor %}
+      </div>
+      <div class="px-4 py-3">
+          {% if session['role'] == 'Gateway'%}
+          <button class="btn btn-success scene-setting mb-3" data-gateway-id="{{gateway_list[0]['id']}}" id="add-scene-button" data-setting-type="add">新增場景</button>
+          {% endif %}
+          <div id="all-scene-div">
+              {% for scene_id, scene_info in scene_list.items() %}
+                  <div class="card border-0 point shadow-none mb-3">
+                      <div class="card-header border-0 py-2 px-2 form-inline" >
+                          <div class="scene-setting pr-1 {% if session['role'] == 'Gateway'%} cursor-pointer {% endif %}" data-scene-id="{{scene_id}}" data-scene-name="{{scene_info['scene-name']}}" data-scene-number="{{scene_info['scene-number']}}" data-setting-type="modify">{{scene_info['scene-name']}} <i class="fas fa-angle-right"></i> </div>
+                         {% if session['role'] == 'Gateway'%}
+                          <button class="btn btn-link btn-trash px-0 ml-2 scene-delete" data-scene-id="{{scene_id}}"  data-scene-name="{{scene_info['scene-name']}}" data-scene-number="{{scene_info['scene-number']}}">
+                              <i class="far fa-trash-alt"></i>
+                          </button>
+                          {% endif %}
+                      </div>
+                      <div class="card-body px-2 py-3 shadow-sm form-inline" id="scene-body-{{scene_id}}">
+                          {% set nodes = [] %}
+                          {% for node_id, node_info in scene_info['node-data'].items() %}
+                              {% if nodes.append(node_id) %} {% endif %}
+                                  <div class="card node-delete mr-2 mb-2" data-node-id="{{node_id}}" data-scene-id="{{scene_id}}" data-node-name="{{node_info[4]}}" data-scene-number="{{scene_info['scene-number']}}" id="scene-node-{{scene_id}}-{{node_id}}">
+                                      <h5 class="card-header text-white bg-primary">{{node_info[4]}} {% if session['role'] == 'Gateway'%}<i class="btn btn-link fas fa-times  p-0 ml-2 my-1"></i> {% endif %}</h5>
+                                      <div class="card-body">
+                                          {% if node_info[5] in G_CONTROL_VALUE_TYPE_LIST %}
+                                            {% set node_value = node_info[6] %}
+                                          {% elif node_info[6] > 0 %}
+                                            {% set node_value = 'ON' %}
+                                          {% else %}
+                                           {% set node_value = 'OFF' %}
+                                          {% endif %}
+                                           <label>{{node_value}}</label>
+                                      </div>
+                                  </div>
+                              <!--<button class="btn btn-primary align-middle ml-2  node-delete" data-node-id="{{node_id}}" data-scene-id="{{scene_id}}" data-node-name="{{node_info[4]}}" id="scene-node-{{scene_id}}-{{node_id}}">
+                                  {{node_info[4]}} <i class="btn btn-link fas fa-times  p-0 ml-2 my-1"></i>
+                              </button>-->
+                          {% endfor %}
+                      </div>
+                      <input type="hidden" id="scene-nodes-{{scene_id}}" value="{{nodes|join(',')}}">
+                  </div>
+              {% endfor %}
+          </div>
+      </div>
+      <div class="modal fade" id="sceneSettingModal" tabindex="-1" role="dialog" aria-labelledby="sceneSettingModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                            <h5 class="modal-title" id="sceneSettingModalLabel">新增場景</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                              <span aria-hidden="true" class="times-size">&times;</span>
+                            </button>
+                    </div>
+                    <form id="scene-setting-form">
+                        <div class="modal-body">
+                            <div class="form-inline pb-3">
+                                <div class="col px-0">
+                                    <div class="form-group pb-2">
+                                        <label for="model-setting-scene-name" class="pr-3">名稱:</label>
+                                        <input type="text" id="model-setting-scene-name" class="form-control col col-sm-9">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="model-setting-scene-number" class="pr-3">號碼:</label>
+                                        <input type="number" min="1" max="63" id="model-setting-scene-number" class="form-control col col-sm-9" data-org-scene-number="">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary mx-2" id="save-scene-name">儲存</button>
+                            </div>
+                            <div class="form-group">
+                                <div class="form-inline">
+                                    <div class="col px-0" id="selected-node-out-div">
+                                        <div class="">
+                                            <div class="col px-0">已選取點位</div>
+                                            <div class="border h-350 form-inline align-content-start scroller">
+                                                <div class="form-check text-center col-12 p-2 border-bottom">
+                                                    <div class="col-2 px-0">
+                                                        <label class="m-0">選取</label>
+                                                    </div>
+                                                    <div class="col pr-0">
+                                                        <label class="m-0">點位名稱</label>
+                                                    </div>
+                                                    <div class="col-4 px-0 d-flex justify-content-end">
+                                                        <label class="m-0">點位狀態</label>
+                                                    </div>
+                                                </div>
+                                                <div id="selected-div" class="col-12 px-0"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="select-button col-1 px-0 text-center">
+                                        <button type="button" class="btn btn-link px-0 pb-3 selected-node" data-select-type="selected"><i class="fas fa-arrow-right font-size-30"></i></button>
+                                        <button type="button" class="btn btn-link px-0 unselected-node" data-select-type="unselected"><i class="fas fa-arrow-left font-size-30"></i></button>
+                                    </div>
+                                    <div class="col px-0" id="unselect-node-out-div">
+                                        <div class="">
+                                            <div class="col px-0">未選取點位</div>
+                                            <div class="border h-350 form-inline align-content-start scroller">
+                                                <div class="form-check text-center col-12 p-2 border-bottom">
+                                                    <div class="col-2 px-0">
+                                                        <label class="m-0">選取</label>
+                                                    </div>
+                                                    <div class="col pr-0">
+                                                        <label class="m-0">點位名稱</label>
+                                                    </div>
+                                                    <div class="col-4 px-0 d-flex justify-content-end">
+                                                        <label class="m-0">點位狀態</label>
+                                                    </div>
+                                                </div>
+                                                <div id="unselected-div" class="col-12 px-0">
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" id="scene-setting-type" value="area-add">
+                            <input type="hidden" id="scene-setting-id" value="">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                            <button type="button" class="btn btn-primary" id="save-setting-scene">儲存</button>
+                        </div>
+                    </form>
+                </div>
+          </div>
+      </div>
+      <script id="scene_list_template" type="text/text/x-jquery-tmpl">
+          <div class="card border-0 point shadow-none mb-3">
+              <div class="card-header border-0 py-2 px-2 form-inline" >
+                  <div class="scene-setting pr-1 cursor-pointer" data-scene-id="${scene_id}" data-scene-name="${scene_name}" data-scene-number="${scene_number}" data-setting-type="modify"> ${scene_name} <i class="fas fa-angle-right"></i> </div>
+                  <button class="btn btn-link btn-trash px-0 ml-2 scene-delete" data-scene-id="${scene_id}"  data-scene-name="${scene_name}" data-scene-number="${scene_number}">
+                      <i class="far fa-trash-alt"></i>
+                  </button>
+              </div>
+              <div class="card-body px-2 py-3 shadow-sm form-inline" id="scene-body-${scene_id}">
+              </div>
+              <input type="hidden" id="scene-nodes-${scene_id}" value="">
+          </div>
+      </script>
+      <script id="scene_item_template" type="text/text/x-jquery-tmpl">
+           <div class="card node-delete mr-2" data-node-id="${node_id}" data-scene-id="${scene_id}" data-node-name="${node_name}" data-scene-number="${scene_number}" id="scene-node-${scene_id}-${node_id}">
+              <h5 class="card-header text-white bg-primary"> ${node_name} <i class="btn btn-link fas fa-times  p-0 ml-2 my-1"></i></h5>
+              <div class="card-body">
+                  <label> ${node_state}</label>
+              </div>
+           </div>
+      </script>
+      <script id="node_item_template" type="text/text/x-jquery-tmpl">
+           <div class="form-check text-center col-12 p-2 border-bottom">
+                <div class="col-2 px-0">
+                    <input class="node-check" type="checkbox" value="" id="node-${node_id}" data-node-id="${node_id}" data-node-type="${node_type}">
+                </div>
+                <div class="col pr-0">
+                    <label class="form-check-label pl-0" for="node-${node_id}">
+                        ${node_name}
+                    </label>
+                </div>
+                <div class="col-4 px-0 d-flex justify-content-end" id="node-state-div-${node_id}">
+                </div>
+            </div>
+      </script>
+      <script id="scene_switch_template" type="text/text/x-jquery-tmpl">
+           <label class="switch align-items-center mb-0">
+                <input class="enabled ${scene_enabled_change}" type="checkbox" ${node_state} id="node-state-${node_id}" data-node-id=${node_id} data-scene-id=${scene_id}>
+                <span class="slider round"></span>
+           </label>
+      </script>
+      <script id="scene_value_template" type="text/text/x-jquery-tmpl">
+           <input type="number" min="0" max="100" class="form-control ${scene_enabled_change} col" id="node-state-${node_id}" value="${node_state}" data-node-id=${node_id} data-scene-id=${scene_id}>
+      </script>
+  </section>
+  {% endblock content%}

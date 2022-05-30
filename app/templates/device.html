@@ -1,0 +1,451 @@
+{% extends"base.html" %} {% block head %} {{super()}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+<script src="{{ url_for('static', filename='js/dae/clientID.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dae/device_loader.js') }}"></script>
+
+<script>
+  function number_check(value) {
+    if ($(value).val().length > parseInt($(value).attr("maxlength"))) {
+      var str = $(value).val();
+      $(value).val(str.substring(0, str.length - 1)) ;
+    }
+    else if(parseInt($(value).val()) > parseInt($(value).attr("max") )|| parseInt($(value).val()) < parseInt($(value).attr("min")) ){
+    $(value).val("");
+    }
+    else
+     $(value).val($(value).val().replace(/[^\d]/g, ''));
+  }
+</script>
+{% endblock head%} {% block content%}
+
+<div class="page home-page">
+  <!-- navbar-->
+  <header class="header">
+    <nav class="navbar py-1">
+      <div class="container-fluid px-1">
+        <div class="navbar-holder d-flex align-items-center justify-content-between">
+          <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#" class="navbar-toggler btn-link        n"><i class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+            <a href="/" class="navbar-brand">
+              <div class="brand-text hidden-sm-down"><span>電力資訊 </span></div>
+            </a>
+          </div>
+          <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+            {% if role == 'Cloud' %}
+            <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+            {%endif%}
+            <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a></li>
+            <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i class="fas fa-sign-out-alt"></i></a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <!-- Counts Section -->
+  <section class="dashboard-counts section-padding">
+    <div id="page-wrapper" calss="text-primary" style="padding: 1%">
+      <div class="card" style="border: 1px solid rgba(0,0,0,.125);">
+        <ol class="breadcrumb">
+          <i class="fa fa-home"></i><a href="{{ url_for('main.device') }}" style="font-family: Microsoft JhengHei">裝置設定</a>
+        </ol>
+        <div class="col-lg-12 col-md-12">
+          <div class="wrapper daily-feeds">
+            <div id="daily-feeds" class="card-header d-flex justify-content-between align-items-center">
+              <h2 class="h5 display"><a data-toggle="collapse" data-parent="#node" href="#" aria-expanded="true" aria-controls="feeds-box">點位</a></h2>
+              <div class="left-column">
+                <a data-toggle="collapse" data-parent="#node" href="#node" aria-expanded="true" aria-controls="feeds-box"><i class="fa fa-angle-down"></i></a>
+              </div>
+            </div>
+            <div id="node" role="tabpanel" class="collapse show">
+              <div class="feed-box">
+                <ul class="feed-elements list-unstyled">
+                  <div class="container-fluid">
+                    <div class="row node_list" style="margin:auto;">
+                    </div>
+                  </div>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-12 col-md-12">
+          <div class="wrapper daily-feeds">
+            <div id="daily-feeds" class="card-header d-flex justify-content-between align-items-center">
+              <h2 class="h5 display"><a data-toggle="collapse" data-parent="#group" href="#" aria-expanded="true" aria-controls="feeds-box">群組</a></h2>
+              <div class="left-column">
+                <a data-toggle="collapse" data-parent="#group" href="#group" aria-expanded="true" aria-controls="feeds-box"><i class="fa fa-angle-down"></i></a>
+              </div>
+            </div>
+            <div id="group" role="tabpanel" class="collapse show">
+              <div class="feed-box">
+                <ul class="feed-elements list-unstyled">
+                  <div class="container-fluid">
+                    <div class="row group_list" style="margin:auto;">
+                    </div>
+                  </div>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-12 col-md-12">
+          <div class="wrapper daily-feeds">
+            <div id="daily-feeds" class="card-header d-flex justify-content-between align-items-center">
+              <h2 class="h5 display"><a data-toggle="collapse" data-parent="#scene" href="#" aria-expanded="true" aria-controls="feeds-box">場景</a></h2>
+              <div class="left-column">
+                <a data-toggle="collapse" data-parent="#scene" href="#scene" aria-expanded="true" aria-controls="feeds-box"><i class="fa fa-angle-down"></i></a>
+              </div>
+            </div>
+            <div id="scene" role="tabpanel" class="collapse show">
+              <div class="feed-box">
+                <ul class="feed-elements list-unstyled">
+                  <div class="container-fluid">
+                    <div class="row scene_list" style="margin:auto;">
+                    </div>
+                  </div>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+  <div class="modal fade" id="node_update" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  </div>
+  <div class="modal fade" id="node_insert" tabindex="-1" role="dialog" aria-labelledby="new_node_modal" aria-hidden="false">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="new_node_modal">點位設定</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="dialog container-fluid">
+            <form method="POST" accept-charset="UTF-8">
+
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-10">
+                  <div class="form-group">
+                    <strong>Gateway</strong>
+                    <input placeholder="" class="node_gateway_insert form-control" disabled="disabled" name="ch" type="text" value="{{gateway_uid}}">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-4">
+                  <div class="form-group">
+                    <strong>機型:</strong>
+                    <select class="form-control node_model_insert" name="model">
+                                            <option value="LT3000">LT3000</option>
+                                            <option value="LT3070">LT3070</option>
+                                            <option value="LT4500">LT4500</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-4">
+                  <div class="form-group">
+                    <strong>名稱</strong>
+                    <input placeholder="電器名稱" class="node_name_insert form-control" name="address" type="text" value="">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-4">
+                  <div class="form-group">
+                    <strong>位址</strong>
+                    <input placeholder="1~254" class="node_gateway_address_insert form-control" min="1" max="254" maxlength="3" onkeyup="number_check(this)"
+                      name="
+                      gateway_address" type="number" value="">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-4">
+                  <div class="form-group">
+                    <strong>點位:</strong>
+                    <input placeholder="1~64" class="node_node_insert form-control" min="1" max="64" maxlength="2" onkeyup="number_check(this)"
+                      name="ch" type="number" value="">
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="node_insert(this)" class="btn btn-primary">新增</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="group_insert" tabindex="-1" role="dialog" aria-labelledby="new_group_modal
+                     " aria-hidden="false">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="new_group_modal">群組設定</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <!---Update-->
+          <div class="modal fade" id="group_insert" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel
+                     " aria-hidden="true"></div>
+          <!-- Modal -->
+        </div>
+        <div class="modal-body">
+          <div class="dialog container-fluid">
+            <form method="POST" accept-charset="UTF-8">
+
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-6">
+                  <div class="form-group">
+                    <strong>群組名稱:</strong>
+                    <input placeholder="" id="group_gateway_name" class="form-control" name="ch" type="text
+                     " value="">
+                  </div>
+                </div>
+                <div class="col-xs-6 col-sm-6 col-md-6">
+                  <div class="form-group">
+                    <strong>群組編號:</strong>
+                    <input placeholder="" id="group_gateway_num" class="form-control" min="1" onkeyup="value=value.replace(/[^\d]/g,'')" name="ch" type="text" value="" required="required">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card node_of_node_data_ready">
+                    <div class="card-header">已選取點位</div>
+                    <div class="card-body">
+                      <div class="card-block">
+                        <div class="row" id="group_of_node">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <br>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card">
+                    <div class="card-header">點位</div>
+                    <div class="card-body">
+                      <div class="card-block" style="overflow-y: scroll;height:250px;">
+                        <div class="row node_of_node_data_yet">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="group_insert(this)" class="btn btn-primary">新增</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="group_update" tabindex="-1" role="dialog1" aria-labelledby="update_ModalLabel" aria-hidden="false">
+    <div class="modal-dialog modal-lg" role="document1">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="update_ModalLabel">群組資訊</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="dialog container-fluid">
+            <form method="POST" accept-charset="UTF-8">
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-6">
+                  <div class="form-group">
+                    <strong>群組名稱:</strong>
+                    <input type="hidden" id="update_group_id" value="1">
+                    <input placeholder="" class=" form-control" id="update_group_gateway_name" name="ch" type="text" value="1">
+                  </div>
+                </div>
+                <div class="col-xs-6 col-sm-6 col-md-6">
+                  <div class="form-group">
+                    <strong>群組編號:</strong>
+                    <input placeholder="" class="form-control" id="update_group_gateway_num" onkeyup="value=value.replace(/[^\d]/g,
+                      '')" name="ch" type="text" min="1" value="1" required="required">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card node_of_node_data_ready">
+                    <div class="card-header">已選取點位</div>
+                    <div class="card-body">
+                      <div class="card-block">
+                        <div class="row" id="update_group_node">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <br>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card">
+                    <div class="card-header">點位</div>
+                    <div class="card-body">
+                      <div class="card-block" style="overflow-y: scroll;height:250px;">
+                        <div class="row" id="update_group_of_node_data_yet">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="group_update(this)" class="btn btn-primary">更新</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="scene_insert" tabindex="-1" role="dialog" aria-labelledby="new_scene_modal
+                     " aria-hidden="false">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="new_scene_modal">場景設定</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+          </button>
+          <!---Update-->
+          <div class="modal fade" id="scene_insert" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel
+                     " aria-hidden="true"></div>
+          <!-- Modal -->
+        </div>
+        <div class="modal-body">
+          <div class="dialog container-fluid">
+            <form method="POST" accept-charset="UTF-8">
+
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-6" style="width:50%">
+                  <div class="form-group">
+                    <strong>場景名稱:</strong>
+                    <input placeholder="" id="scene_gateway_name" class="form-control" name="ch" type="text
+                     " value="">
+                  </div>
+                </div>
+                <div class="col-xs-6 col-sm-6 col-md-6" style="width:50%">
+                  <div class="form-group">
+                    <strong>場景編號:</strong>
+                    <input placeholder="" id="scene_gateway_num" class="form-control" min="1" onkeyup="value=value.replace(/[^\d]/g,
+                      '')" name="ch" type="text" value="">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card scene_node_of_node_data_ready">
+                    <div class="card-header">已選取點位</div>
+                    <div class="card-body">
+                      <div class="card-block">
+                        <div class="row" id="check_scene_node">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <br>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card">
+                    <div class="card-header">點位</div>
+                    <div class="card-body">
+                      <div class="card-block" style="overflow-y: auto;height:350px;">
+                        <div class="row scene_node_of_node_data_yet">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="scene_insert(this)" class="btn btn-primary">新增</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="scene_update" tabindex="-1" role="dialog1" aria-labelledby="update_ModalLabel
+                     " aria-hidden="false">
+    <div class="modal-dialog modal-lg" role="document1">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="update_ModalLabel">場景資訊</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="dialog container-fluid">
+            <form method="POST" accept-charset="UTF-8">
+
+              <div class="row">
+                <div class="col-xs-6 col-sm-6 col-md-6">
+                  <div class="form-group">
+                    <strong>場景名稱:</strong>
+                    <input type="hidden" class="update_scene_id" id="update_scene_id" value="1">
+                    <input placeholder="" class="form-control" id="update_scene_gateway_name" name="ch" type="text" value="1">
+                  </div>
+                </div>
+                <div class="col-xs-6 col-sm-6 col-md-6">
+                  <div class="form-group">
+                    <strong>場景編號:</strong>
+                    <input placeholder="" class="form-control" id="update_scene_gateway_num" min="1" onkeyup="value=value.replace(/[^\d]/g,
+                      '')" name="ch" type="text" value="1">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card node_of_node_data_ready">
+                    <div class="card-header">已選取點位</div>
+                    <div class="card-body">
+                      <div class="card-block">
+                        <div class="row" id="update_scene_check_node">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <br>
+              <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12">
+                  <div class="card">
+                    <div class="card-header">點位</div>
+                    <div class="card-body">
+                      <div class="card-block" style="overflow-y: scroll;height:250px;">
+                        <div class="row update_scene_node_of_node_data_yet" id="update_scene_node_of_node_data_yet">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="scene_update(this)" class="btn btn-primary scene_update_submit">更新</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endblock content%}

@@ -1,0 +1,210 @@
+{% extends"base.html" %} {% block head %} {{super()}}
+<link href="{{ url_for('static', filename='css/dae/schedule.css') }}" rel="stylesheet">
+
+<script>
+
+</script>
+{% endblock head%} {% block content%}
+
+<div class="page home-page">
+    <!-- navbar-->
+    <header class="header">
+        <nav class="navbar py-1">
+            <div class="container-fluid px-1">
+                <div class="navbar-holder d-flex align-items-center justify-content-between">
+                    <div class="navbar-header d-flex align-items-center"><a id="toggle-btn" href="#"
+                                                                            class="navbar-toggler btn-link"><i
+                            class="fa fa-bars fa-2x" style="vertical-align: middle;"> </i></a>
+                        <a href="/" class="navbar-brand">
+                            <div class="brand-text hidden-sm-down"><span>排程設定 </span></div>
+                        </a>
+                    </div>
+                    <ul class="nav-menu list-unstyled d-flex flex-md-row align-items-md-center mb-0">
+                        {% if role == 'Cloud' %}
+                        <li class="nav-item"><a href="gateway_setting" class="nav-link pre-page">上一頁</i></a></li>
+                        {%endif%}
+                        <li class="nav-item"><a href="/" class="nav-link logout pl-0"><i class="fas fa-home"></i></a>
+                        </li>
+                        <li class="nav-item"><a href="{{ url_for('main.logout') }}" class="nav-link pl-0"><i
+                                class="fas fa-sign-out-alt"></i></a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <!-- Counts Section -->
+
+    <section class="h-100">
+        <div class="form-inline px-4 pagination-div">
+            <button class="top-pagination h-100 px-4" id="time-control">控制時間</button>
+            <button class="top-pagination-active h-100 px-4" id="schedule-control">工作日/例假日設定</button>
+        </div>
+        <div class="px-4 py-3">
+            <button class="btn btn-success mb-3" id="add-control-period" data-toggle="modal"
+                    data-target="#scheduleSettingModal">新增控制時段
+            </button>
+            <div id="all-group-div">
+                <div class="card border-0 point shadow-none mb-3">
+                    <label class="card-header border-0 py-2 px-2">控制時段</label>
+                    <div class="card-body px-2 py-3 shadow-sm form-inline" id="control-time-div">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th scope="col">排程名稱</th>
+                                <th scope="col">排程類型</th>
+                                <th scope="col">控制時間</th>
+                                <th scope="col">編輯</th>
+                                <th scope="col">刪除</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td>開始上班</td>
+                                <td>工作日</td>
+                                <td>08:30 ~ 12:30</td>
+                                <td>
+                                    <button type="button" class="btn btn-primary">編輯</button>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger">刪除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>下班</td>
+                                <td>工作日</td>
+                                <td>17:30 ~ 08:30</td>
+                                <td>
+                                    <button type="button" class="btn btn-primary">編輯</button>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger">刪除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>日照植物</td>
+                                <td>例假日</td>
+                                <td>日出</td>
+                                <td>
+                                    <button type="button" class="btn btn-primary">編輯</button>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger">刪除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>日落植物</td>
+                                <td>例假日</td>
+                                <td>日落</td>
+                                <td>
+                                    <button type="button" class="btn btn-primary">編輯</button>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger">刪除</button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <div class="modal fade" id="scheduleSettingModal" tabindex="-1" role="dialog"
+         aria-labelledby="scheduleSettingModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scheduleSettingModalLabel">新增控制時段</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true" class="times-size">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="">
+                        <div class="form-group">
+                            <label>排程名稱:</label>
+                            <input type="text" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="">排程類型:</label>
+                            <select class="form-control">
+                                <option>工作日</option>
+                                <option>例假日</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>控制時間:</label>
+                            <div class="form-group form-check px-4">
+                                <input class="form-check-input" type="radio" name="control-time"
+                                       id="control-time-sunrise" value="sunrise" checked>
+                                <label class="form-check-label px-0" for="control-time-sunrise">
+                                    日出
+                                </label>
+                            </div>
+                            <div class="form-group form-check px-4">
+                                <input class="form-check-input" type="radio" name="control-time"
+                                       id="control-time-sunset" value="sunset">
+                                <label class="form-check-label px-0" for="control-time-sunset">
+                                    日落
+                                </label>
+                            </div>
+                            <div class="form-group form-check px-4">
+                                <input class="form-check-input" type="radio" name="control-time" id="control-time-times"
+                                       value="times">
+                                <label class="form-check-label px-0" for="control-time-times">
+                                    時間
+                                </label>
+                                <div class="form-inline">
+                                    <input class="form-control  update_timepicker col-4" type="time"
+                                           name="update_control_time" value="00:00" required="required">
+                                    <span class="px-2">~</span>
+                                    <input class="form-control  update_timepicker col-4" type="time"
+                                           name="update_control_time" value="00:00" required="required">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--update_schedule_group-->
+                    <div class="">
+                        <table class="table table-striped">
+                            <thead class="update_schedule_group_title">
+                            <tr>
+                                <th>群組名稱</th>
+                                <th>群組狀態</th>
+                                <th>選擇</th>
+                            </tr>
+                            </thead>
+                            <tbody class="">
+                            <tr>
+                                <th>全開</th>
+                                <th>
+                                    <label class="switch">
+                                        <input type="checkbox">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </th>
+                                <th><input class="form-check-input m-0 pl-4" type="checkbox" value=""></th>
+                            </tr>
+                            <tr>
+                                <th>全關</th>
+                                <th>
+                                    <label class="switch">
+                                        <input type="checkbox">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </th>
+                                <th><input class="form-check-input m-0 pl-4" type="checkbox" value=""></th>
+                            </tr>
+                            </tbody>
+
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+                    <button type="button" class="btn btn-primary" id="save-setting-group">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock content%}
